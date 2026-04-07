@@ -22,36 +22,119 @@ In a recent proof-of-concept on Cu-Au/Cu-Ag CO₂ electroreduction ([autoCatalys
 - **Key innovation**: `computation.output_quantity` prevents comparing incompatible quantities (e.g., raw DFT energy ΔE vs grand canonical free energy ΔG — a mistake that cost us days)
 - **Three mechanisms identified**: CO concentration (Cu-Au), galvanic coupling (Cu-Ag), faceting (nanostructures)
 
-## 3-Day Plan
+## Progress (Day 1 — April 7)
 
-### Day 1: Setup + Data Ingestion
+### Completed
+- [x] ISAAC API access verified — 79 records in database, API healthy
+- [x] FairCHEM/UMA v2.19.0 installed on S3DF (`fairchem` conda env)
+- [x] UMA validated on both **ada (L40S)** and **ampere (A100)** GPU partitions
+- [x] **Systematic UMA benchmark: 56 calculations completed** (7 surfaces × 8 adsorbates)
+  - Surfaces: Cu(111), Cu(100), Cu(211), Au(111), Ag(111), Cu₃Au(111), Cu₃Ag(111)
+  - Adsorbates: CO, H, OH, CHO, COH, OCCO, COOH, CO₂
+  - E_ads(CO/Cu111) = -0.42 eV vs DFT RPBE = -0.45 eV (0.03 eV error)
+  - Full relaxation in ~3 seconds per system on GPU
+- [x] ISAAC database queried — 37 Cu-Au CO₂RR performance records analyzed
+- [x] Discord bot running for team communication
+- [x] Hypothesis schema reviewed from autoCatalysisAgent proof-of-concept
 
-| Person | Task | Deliverable |
-|--------|------|-------------|
-| **Schema Lead** | Set up ISAAC API access for everyone, walk through schema blocks | Everyone can POST records |
-| **Literature Agent** | Run Edison queries on chosen system, extract mechanisms | 5-10 literature records in ISAAC |
-| **Computation** | Set up FairCHEM/UMA or prepare DFT intent records | Working intent→evidence demo |
-| **Hypothesis Team** | Choose catalysis system, identify key experimental observations | System selected, 5-10 experimental records in ISAAC |
+### Key Finding from Database Analysis
+The Cu-Au CO₂RR data shows clear **geometry-dependent C₂H₄ selectivity**:
+- 80μm Cu / 20μm Au stripes → **25.8% FE(C₂H₄)** (best)
+- 160μm Cu / 20μm Au → 15.4% FE(C₂H₄)
+- 20μm Cu / 80μm Au → only 2% FE(C₂H₄)
+- Pure Cu → <1% FE(C₂H₄)
 
-**System selection criteria**: Pick something where (1) someone has experimental data, (2) competing hypotheses exist in literature, (3) simple DFT can discriminate hypotheses.
+This supports the CO spillover / tandem catalysis hypothesis.
 
-### Day 2: The Agent Loop
+## 3-Day Plan (Detailed)
 
-**Morning**: Connect the pieces
-- Literature agent finds competing mechanisms
-- Create intent records for calculations that TEST the hypotheses
-- Submit to compute (FairCHEM for fast screening, DFT for validation)
-- Update hypothesis rankings with new evidence
+### Day 1 (April 7): Setup + Data Ingestion ← TODAY
 
-**Afternoon**: The always-on component
-- Set up monitoring agent that watches ISAAC for new evidence
-- When evidence arrives → re-rank hypotheses → suggest next experiment
-- Minimal version: Python script polling API every 5 minutes
+#### Step 1.1: Infrastructure (DONE)
+- [x] Git repo: `ISAAC-DOE/hackathon_april2026`
+- [x] ISAAC API + Edison API tokens in `.env`
+- [x] FairCHEM/UMA working on S3DF (ada + ampere)
+- [x] Discord bot for team coordination
 
-### Day 3: Demo + Writeup
+#### Step 1.2: System Selection (IN PROGRESS)
+- [ ] **Decision**: Which catalysis system for the hackathon demo?
+  - Option A: **Continue Cu-Au CO₂RR** — 37 records already in ISAAC, hypothesis schema proven
+  - Option B: **New system** from someone in the room with fresh data
+  - Option C: **Cu-Ag CO₂RR** — extend existing work to second alloy
+- [ ] Identify 5-7 key experimental observations (OBS-1 through OBS-N) to score hypotheses against
 
-**Morning**: Polish, prepare presentation
-**Afternoon**: Demo to broader group, document lessons learned
+#### Step 1.3: Literature Ingestion
+- [ ] Run Edison queries for the chosen system's mechanisms
+  - Query 1: `"{system} CO2 reduction mechanism selectivity"`
+  - Query 2: `"{system} C-C coupling pathway DFT"`
+  - Query 3: `"{system} faradaic efficiency composition dependence"`
+- [ ] Extract competing mechanisms from top papers
+- [ ] Create **literature-type records** in ISAAC (or `evidence` with `record_domain: literature`)
+
+#### Step 1.4: Hypothesis Generation
+- [ ] Generate 5-8 hypotheses using the structured schema (`hypothesis_schema.json`)
+- [ ] Each hypothesis must have:
+  - Falsifiable statement
+  - Origin (literature/DFT/data pattern) with reasoning chain
+  - Mechanism with species, elementary steps, length scale
+  - Quantitative predictions with falsification criteria
+- [ ] Create observation scoring matrix (OBS-1 through OBS-N vs H-001 through H-00M)
+
+### Day 2 (April 8): The Agent Loop
+
+#### Step 2.1: Hypothesis → Intent Records (Morning)
+- [ ] For each hypothesis, identify what DFT calculation would test it
+- [ ] Create **intent records** in ISAAC for the top 3-5 hypotheses
+  - Include: computation method, slab model, output quantity, success criteria
+  - Link to the hypothesis that motivated the calculation
+- [ ] Submit intent records to ISAAC via API
+
+#### Step 2.2: Fast Screening with UMA (Morning)
+- [ ] Run UMA calculations for all intent records
+  - Use `scripts/uma_systematic_benchmark.py` as template
+  - Compare UMA adsorption energies across hypothesized active sites
+- [ ] Create **evidence records** in ISAAC with UMA results
+  - Mark as `method.family: "MLIP"`, `method.functional_name: "UMA-s-1p2"`
+  - Link to intent via `derived_from` + `matched_computational_method`
+
+#### Step 2.3: DFT Validation (Afternoon)
+- [ ] For the top 2-3 discriminating calculations, submit VASP jobs
+  - Use existing VASP setup from `~/claudeS3DF`
+  - PBE+D3 + VASPsol on 4×4 slabs (matching prior work)
+- [ ] Create evidence records when complete
+
+#### Step 2.4: Hypothesis Ranking Engine (Afternoon)
+- [ ] Build ranking script: `scripts/rank_hypotheses.py`
+  - Input: hypothesis JSON files + ISAAC evidence records
+  - Scoring: +1 (supports), 0 (neutral), -1 (contradicts) per observation
+  - Output: ranked table with status (supported/eliminated/needs_more_data)
+- [ ] First ranking pass with existing data
+- [ ] Second pass after UMA results arrive
+
+#### Step 2.5: Monitoring Agent (Evening)
+- [ ] Build `scripts/monitor_isaac.py` — polls ISAAC API every 5 minutes
+  - Watches for new evidence records
+  - When new evidence arrives: re-runs ranking, reports changes
+  - Suggests next highest-value calculation
+- [ ] Connect to Discord for notifications
+
+### Day 3 (April 9): Demo + Integration
+
+#### Step 3.1: End-to-End Demo (Morning)
+- [ ] Live demo: submit intent → UMA computes → evidence posted → hypothesis re-ranked
+- [ ] Show the full chain: literature → hypothesis → prediction → test → evidence → update
+- [ ] Highlight: what would have taken weeks manually, done in minutes
+
+#### Step 3.2: Results Analysis (Morning)
+- [ ] Compile final hypothesis ranking table
+- [ ] Document which hypotheses were supported/eliminated and why
+- [ ] Compare UMA vs DFT where both are available
+
+#### Step 3.3: Presentation + Writeup (Afternoon)
+- [ ] Prepare slides for ModCon demo
+- [ ] Document architecture: ISAAC schema + agent workflow
+- [ ] List lessons learned and schema improvements
+- [ ] Push all code and results to GitHub
 
 ## Resources
 

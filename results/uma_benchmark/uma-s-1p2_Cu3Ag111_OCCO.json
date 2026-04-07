@@ -1,0 +1,20 @@
+{
+  "model": "uma-s-1p2",
+  "surface": "Cu3Ag111",
+  "adsorbate": "OCCO",
+  "fmax": 0.05,
+  "timestamp": "2026-04-07T08:58:18Z",
+  "E_slab_ads_eV": -137.33846,
+  "n_steps_ads": 76,
+  "time_slab_ads_s": 8.32,
+  "converged_ads": true,
+  "final_fmax_ads": 0.045898,
+  "n_atoms": 40,
+  "E_slab_eV": -107.857891,
+  "time_slab_s": 1.67,
+  "E_gas_eV": -28.989251,
+  "gas_reference": "OCCO(g) (oc20)",
+  "E_ads_eV": -0.491318,
+  "status": "completed",
+  "total_time_s": 9.99
+}

@@ -1,0 +1,20 @@
+{
+  "model": "uma-s-1p2",
+  "surface": "Ag111",
+  "adsorbate": "H",
+  "fmax": 0.05,
+  "timestamp": "2026-04-07T08:58:20Z",
+  "E_slab_ads_eV": -77.29728,
+  "n_steps_ads": 14,
+  "time_slab_ads_s": 2.32,
+  "converged_ads": true,
+  "final_fmax_ads": 0.049431,
+  "n_atoms": 37,
+  "E_slab_eV": -74.164027,
+  "time_slab_s": 0.77,
+  "E_gas_eV": -3.470316,
+  "gas_reference": "0.5*H2 (oc20)",
+  "E_ads_eV": 0.337062,
+  "status": "completed",
+  "total_time_s": 3.09
+}

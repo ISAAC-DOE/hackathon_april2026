@@ -1,0 +1,20 @@
+{
+  "model": "uma-s-1p2",
+  "surface": "Au111",
+  "adsorbate": "CO2",
+  "fmax": 0.05,
+  "timestamp": "2026-04-07T08:58:20Z",
+  "E_slab_ads_eV": -112.899755,
+  "n_steps_ads": 47,
+  "time_slab_ads_s": 5.99,
+  "converged_ads": true,
+  "final_fmax_ads": 0.044633,
+  "n_atoms": 39,
+  "E_slab_eV": -90.514355,
+  "time_slab_s": 1.04,
+  "E_gas_eV": -22.349072,
+  "gas_reference": "CO2(g) (oc20)",
+  "E_ads_eV": -0.036328,
+  "status": "completed",
+  "total_time_s": 7.03
+}

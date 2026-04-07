@@ -4,3 +4,7 @@ __pycache__/
 .DS_Store
 uploads/
 bot.log
+logs/
+*.err
+*.out
+uma_co_cu111_results.json

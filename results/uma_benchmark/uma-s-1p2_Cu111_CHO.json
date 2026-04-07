@@ -1,0 +1,24 @@
+{
+  "model": "uma-s-1p2",
+  "surface": "Cu111",
+  "adsorbate": "CHO",
+  "fmax": 0.05,
+  "timestamp": "2026-04-07T08:57:41Z",
+  "E_slab_ads_eV": -127.944371,
+  "n_steps_ads": 45,
+  "time_slab_ads_s": 5.28,
+  "converged_ads": true,
+  "final_fmax_ads": 0.030347,
+  "n_atoms": 39,
+  "E_slab_eV": -110.189826,
+  "time_slab_s": 0.75,
+  "E_gas_eV": -16.401025,
+  "gas_reference": "CHO(g) (oc20)",
+  "dft_references": {
+    "PBE": -1.6,
+    "source": "Nie 2013"
+  },
+  "E_ads_eV": -1.35352,
+  "status": "completed",
+  "total_time_s": 6.04
+}

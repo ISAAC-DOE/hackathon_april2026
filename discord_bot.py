@@ -27,6 +27,8 @@ import discord
 from dotenv import load_dotenv
 
 load_dotenv()
+# Load Discord token from a separate file outside Claude's working dir
+load_dotenv(os.path.expanduser("~/.claude-discord-env"))
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -543,11 +545,27 @@ async def on_ready():
     print("---")
 
 
+# Dedup: track recently processed message IDs to prevent double-processing
+_processed_messages: set[int] = set()
+_processed_messages_max = 1000
+
+
 @client.event
 async def on_message(message: discord.Message):
+    global _processed_messages
+
     # Don't respond to ourselves
     if message.author == client.user:
         return
+
+    # Dedup guard — skip if we already processed this message
+    if message.id in _processed_messages:
+        logger.warning("Duplicate message event for ID %s — skipping", message.id)
+        return
+    _processed_messages.add(message.id)
+    # Keep the set from growing forever
+    if len(_processed_messages) > _processed_messages_max:
+        _processed_messages = set(list(_processed_messages)[-500:])
 
     # Authorization check (if user IDs are configured)
     if ALLOWED_USER_IDS and message.author.id not in ALLOWED_USER_IDS:
@@ -555,35 +573,41 @@ async def on_message(message: discord.Message):
 
     text = message.content.strip()
 
-    # Check if this message is for us: @mention, !command, or has attachments with mention
-    is_mentioned = client.user.mentioned_in(message)
+    # Check if this message is for us: direct @mention, !command, or DM
+    # Only count real Discord mentions (contains <@bot_id>), not plain-text "@botname"
+    is_mentioned = client.user in message.mentions and f"<@{client.user.id}>" in text
     is_command = text.startswith("!")
     is_dm = isinstance(message.channel, discord.DMChannel)
     has_attachments = len(message.attachments) > 0
 
+    logger.info(
+        "on_message id=%s mentioned=%s cmd=%s dm=%s attachments=%s text=%s",
+        message.id, is_mentioned, is_command, is_dm, has_attachments,
+        text[:80] if text else "(empty)",
+    )
+
     if not (is_mentioned or is_command or is_dm):
         return
 
-    # Handle commands
-    if is_command:
-        cmd_word = text.split()[0].lower()
+    # Strip mention first, THEN check for commands
+    content = text
+    if is_mentioned:
+        content = content.replace(f"<@{client.user.id}>", "").strip()
+    if content.lower().startswith("!bot"):
+        content = content[4:].strip()
+
+    # Handle commands (works with both "!jobs" and "@bot !jobs")
+    if content.startswith("!"):
+        cmd_word = content.split()[0].lower()
 
         if cmd_word == "!watch":
-            args = text[len("!watch"):].strip()
+            args = content[len("!watch"):].strip()
             await cmd_watch(message, args)
             return
 
         if cmd_word in COMMANDS:
             await COMMANDS[cmd_word](message)
             return
-
-    # Strip mention to get the actual message
-    content = text
-    if is_mentioned:
-        content = content.replace(f"<@{client.user.id}>", "").strip()
-    # Strip !bot prefix if used
-    if content.lower().startswith("!bot"):
-        content = content[4:].strip()
 
     # Process attachments (text files, code, data, etc.)
     attachment_text = ""
@@ -609,8 +633,10 @@ async def on_message(message: discord.Message):
             f"from {message.author.display_name}]: {full_content}"
         )
 
-    # Show typing indicator while Claude thinks
-    thinking_msg = await message.channel.send(f"**{BOT_NAME}** is thinking...")
+    # Send ONE thinking message as a reply, nothing else
+    logger.info("SENDING thinking reply to message %s", message.id)
+    thinking_msg = await message.reply(f"**{BOT_NAME}** is thinking...")
+    logger.info("SENT thinking reply, got msg id=%s", thinking_msg.id)
 
     async with _lock:
         try:
@@ -624,10 +650,13 @@ async def on_message(message: discord.Message):
     for i, chunk in enumerate(chunks):
         if i == 0:
             try:
+                logger.info("EDITING thinking msg %s with response", thinking_msg.id)
                 await thinking_msg.edit(content=chunk)
-            except Exception:
+            except Exception as e:
+                logger.warning("Edit failed (%s), sending new message", e)
                 await message.channel.send(chunk)
         else:
+            logger.info("SENDING additional chunk %d", i)
             await message.channel.send(chunk)
 
 

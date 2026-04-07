@@ -1,0 +1,20 @@
+{
+  "model": "uma-s-1p2",
+  "surface": "Cu100",
+  "adsorbate": "OH",
+  "fmax": 0.05,
+  "timestamp": "2026-04-07T09:05:20Z",
+  "E_slab_ads_eV": -117.41637,
+  "n_steps_ads": 20,
+  "time_slab_ads_s": 1.71,
+  "converged_ads": true,
+  "final_fmax_ads": 0.049622,
+  "n_atoms": 38,
+  "E_slab_eV": -108.205204,
+  "time_slab_s": 0.45,
+  "E_gas_eV": -10.681651,
+  "gas_reference": "H2O - 0.5*H2 (oc20)",
+  "E_ads_eV": 1.470485,
+  "status": "completed",
+  "total_time_s": 2.16
+}

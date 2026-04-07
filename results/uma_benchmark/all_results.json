@@ -1,0 +1,22 @@
+[
+  {
+    "model": "uma-s-1p2",
+    "surface": "Cu3Ag111",
+    "adsorbate": "COOH",
+    "fmax": 0.05,
+    "timestamp": "2026-04-07T09:10:55Z",
+    "E_slab_ads_eV": -132.677842,
+    "n_steps_ads": 58,
+    "time_slab_ads_s": 3.85,
+    "converged_ads": true,
+    "final_fmax_ads": 0.035431,
+    "n_atoms": 40,
+    "E_slab_eV": -107.857891,
+    "time_slab_s": 0.9,
+    "E_gas_eV": -23.392758,
+    "gas_reference": "COOH(g) (oc20)",
+    "E_ads_eV": -1.427193,
+    "status": "completed",
+    "total_time_s": 4.75
+  }
+]
