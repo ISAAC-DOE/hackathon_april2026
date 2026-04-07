@@ -46,6 +46,41 @@ The Cu-Au CO₂RR data shows clear **geometry-dependent C₂H₄ selectivity**:
 
 This supports the CO spillover / tandem catalysis hypothesis.
 
+### UMA Benchmark Results (E_ads in eV)
+
+All computed with UMA-s-1p2, `task=oc20`, full relaxation (fmax < 0.05 eV/A):
+
+| Surface | *CO | *H | *CHO | *COH | *OCCO | *COOH | *CO2 | *OH |
+|---------|------|------|------|------|-------|-------|------|------|
+| Cu(111) | -0.42 | -0.07 | -1.35 | -2.82 | -0.87 | -1.67 | -0.04 | 2.29 |
+| Cu(100) | -0.54 | -0.03 | -1.42 | -2.65 | -1.07 | -1.79 | -0.01 | 1.47 |
+| Cu(211) | -0.68 | -0.06 | -1.67 | -2.72 | -0.64 | -1.91 | -0.05 | 0.45 |
+| Au(111) | -0.01 | 0.29 | -1.45 | -1.52 | 0.13 | -1.53 | -0.04 | 2.94 |
+| Ag(111) | 0.01 | 0.34 | -1.03 | -1.63 | 0.00 | -1.36 | -0.02 | 2.27 |
+| Cu3Au(111) | 0.04 | 0.16 | -1.49 | -2.01 | -0.39 | -1.63 | -0.03 | 0.72 |
+| Cu3Ag(111) | -0.04 | 0.06 | -1.19 | -2.29 | -0.49 | -1.43 | -0.04 | 0.61 |
+
+**Key trends**: CO binds Cu(211) > Cu(100) > Cu(111) >> Au,Ag. OCCO coupling strongest on Cu(100). Alloys show intermediate binding.
+
+## Repo Structure
+
+```
+hackathon_april2026/
+├── scripts/
+│   ├── uma_systematic_benchmark.py   # 7 surfaces x 8 adsorbates benchmark
+│   ├── submit_all_benchmarks.sh      # Fan out 56 jobs across ada + ampere
+│   ├── collect_benchmark_results.py  # Aggregate results into summary table
+│   └── test_uma_simple.py            # Quick single-system UMA test
+├── jobs/
+│   ├── benchmark/                    # Auto-generated SLURM scripts per system
+│   └── test_uma.sh                   # Basic UMA job template
+├── results/
+│   └── uma_benchmark/                # 56 JSON result files + combined summary
+├── discord_bot.py                    # Team communication bot
+├── .env                              # API tokens (gitignored)
+└── README.md
+```
+
 ## 3-Day Plan (Detailed)
 
 ### Day 1 (April 7): Setup + Data Ingestion ← TODAY
