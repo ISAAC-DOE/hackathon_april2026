@@ -1,0 +1,93 @@
+{
+  "additions_to_existing": {
+    "Record Info": {
+      "record_type": {
+        "add_values": ["hypothesis"]
+      },
+      "record_domain": {
+        "add_values": ["hypothesis"]
+      }
+    },
+    "System": {
+      "system.domain": {
+        "add_values": ["analytical"]
+      },
+      "system.technique": {
+        "add_values": ["hypothesis_generation", "systematic_review"]
+      },
+      "system.instrument.instrument_type": {
+        "add_values": ["reasoning_engine"]
+      }
+    },
+    "Links": {
+      "links.rel": {
+        "add_values": ["motivates", "supersedes", "competes_with"]
+      },
+      "links.basis": {
+        "add_values": ["shared_prediction_target", "hypothesis_refinement", "abductive_inference"]
+      }
+    },
+    "Descriptors": {
+      "descriptors.hypothesis_evaluation": {
+        "add_values": ["hypothesis_status", "hypothesis_score", "hypothesis_rank", "observation_score"],
+        "description": "Descriptor names for hypothesis evaluation. hypothesis_status uses categorical kind; hypothesis_score and hypothesis_rank use absolute kind; observation_score.{ID} uses categorical kind with dot-notation for per-prediction scoring."
+      },
+      "descriptors.hypothesis_status_values": {
+        "add_values": ["proposed", "supported", "contradicted", "eliminated", "needs_more_data", "superseded"],
+        "description": "Controlled values for the hypothesis_status categorical descriptor."
+      },
+      "descriptors.observation_score_values": {
+        "add_values": ["supports", "contradicts", "neutral", "insufficient"],
+        "description": "Controlled values for observation_score.{ID} categorical descriptors."
+      }
+    }
+  },
+  "new_categories": {
+    "Hypothesis": {
+      "hypothesis.hypothesis_type": {
+        "description": "Classification of the hypothesis claim.",
+        "values": ["mechanistic", "selectivity", "activity", "stability", "scaling", "structural", "transport"]
+      },
+      "hypothesis.origin.source_type": {
+        "description": "How the hypothesis was generated. Distinct from root source_type which describes data provenance.",
+        "values": ["literature_synthesis", "data_pattern", "computational_screening", "expert_reasoning", "analogy", "mechanistic_analysis"]
+      },
+      "hypothesis.origin.reasoning_chain.basis": {
+        "description": "Epistemic basis for each step in the reasoning chain.",
+        "values": ["observation", "computation", "literature", "inference", "analogy", "mechanism_analysis"]
+      },
+      "hypothesis.mechanism.elementary_steps.role": {
+        "description": "Kinetic role of an elementary step in the proposed mechanism.",
+        "values": ["rate_limiting", "equilibrated", "irreversible", "unknown"]
+      },
+      "hypothesis.mechanism.length_scale.determined_by": {
+        "description": "Physical process that sets the characteristic length scale.",
+        "values": ["diffusion", "electronic", "grain_size", "patterning", "strain_field", "nanostructure", "film_thickness"]
+      },
+      "hypothesis.predictions.direction": {
+        "description": "Expected direction of change in the predicted descriptor relative to the reference condition.",
+        "values": ["increase", "decrease", "no_change", "non_monotonic", "threshold", "correlation"]
+      },
+      "hypothesis.predictions.test_domain": {
+        "description": "What kind of evidence record would test this prediction. Reuses record_domain values.",
+        "values": ["characterization", "performance", "simulation"]
+      },
+      "hypothesis.predictions.falsification_quantitative.operator": {
+        "description": "Comparison operator for machine-readable falsification criteria.",
+        "values": ["less_than", "greater_than", "equals", "not_equals", "within_range", "outside_range"]
+      },
+      "hypothesis.scope.transferability.generality_level": {
+        "description": "How broadly the hypothesis mechanism applies beyond the primary material system.",
+        "values": ["system_specific", "class_specific", "universal"]
+      },
+      "hypothesis.scope.transferability.confidence": {
+        "description": "Confidence that the hypothesis transfers to the specified material system.",
+        "values": ["high", "moderate", "low"]
+      },
+      "hypothesis.group.role_in_group": {
+        "description": "Role of this hypothesis within a competing hypothesis group.",
+        "values": ["primary", "alternative", "null_hypothesis", "refinement"]
+      }
+    }
+  }
+}

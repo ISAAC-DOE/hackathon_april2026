@@ -1,0 +1,131 @@
+{
+  "isaac_record_version": "1.05",
+  "record_id": "01JSEVAL0001CUAUCO2RRMECHS",
+  "record_type": "evidence",
+  "record_domain": "derived",
+  "source_type": "database",
+  "timestamps": {
+    "created_utc": "2026-04-08T10:30:00Z"
+  },
+  "sample": {
+    "material": {
+      "name": "Cu-Au bimetallic system",
+      "formula": "CuAu",
+      "provenance": "literature"
+    },
+    "sample_form": "film"
+  },
+  "system": {
+    "domain": "analytical",
+    "technique": "systematic_review",
+    "instrument": {
+      "instrument_type": "reasoning_engine",
+      "instrument_name": "hypothesis_ranking_engine",
+      "vendor_or_project": "ISAAC"
+    },
+    "configuration": {
+      "model_version": "claude-opus-4-6",
+      "evaluation_methodology": "observation_scoring_matrix"
+    }
+  },
+  "context": {
+    "environment": "in_situ",
+    "temperature_K": 298.15,
+    "electrochemistry": {
+      "reaction": "CO2RR",
+      "electrolyte": {
+        "name": "KHCO3",
+        "concentration_M": 1.0
+      }
+    }
+  },
+  "descriptors": {
+    "outputs": [
+      {
+        "label": "comparative_ranking_v1",
+        "generated_utc": "2026-04-08T10:30:00Z",
+        "generated_by": {
+          "agent": "hypothesis_ranking_engine",
+          "version": "1.0"
+        },
+        "descriptors": [
+          {
+            "name": "hypothesis_rank.01JSHYP00001CO2RRSPILLOVER",
+            "kind": "absolute",
+            "source": "auto",
+            "value": 1,
+            "unit": "dimensionless",
+            "definition": "Rank 1 of 2 in group HG-CUAU-CO2RR-MECHANISMS. CO spillover hypothesis. Score: +5. Status: supported. Evidence: geometry-dependent selectivity data matches spillover predictions; UMA binding energy trends confirm prerequisite conditions.",
+            "uncertainty": {
+              "sigma": 0.5,
+              "unit": "dimensionless"
+            }
+          },
+          {
+            "name": "hypothesis_rank.01JSHYP00002CO2RRELECTRONIC",
+            "kind": "absolute",
+            "source": "auto",
+            "value": 2,
+            "unit": "dimensionless",
+            "definition": "Rank 2 of 2 in group HG-CUAU-CO2RR-MECHANISMS. Electronic modification hypothesis. Score: 0. Status: needs_more_data. Evidence: UMA confirms binding energy changes exist, but geometry dependence of experimental data contradicts prediction P-002 (FE should correlate with Au fraction, not spacing).",
+            "uncertainty": {
+              "sigma": 0.5,
+              "unit": "dimensionless"
+            }
+          },
+          {
+            "name": "observation_score.P001_spillover_geometry",
+            "kind": "categorical",
+            "source": "auto",
+            "value": "supports",
+            "unit": "dimensionless",
+            "definition": "80um Cu / 20um Au gives 25.8% FE(C2H4) vs 15.4% for 160um Cu / 20um Au. Non-monotonic geometry dependence consistent with diffusion-length spillover mechanism (P-002 of H-001).",
+            "uncertainty": {
+              "confidence": 0.85
+            }
+          },
+          {
+            "name": "observation_score.P002_electronic_geometry",
+            "kind": "categorical",
+            "source": "auto",
+            "value": "contradicts",
+            "unit": "dimensionless",
+            "definition": "Electrodes with same Au surface fraction but different stripe widths show different FE(C2H4). This contradicts the electronic modification prediction P-002 that selectivity should correlate with Au fraction, not spacing.",
+            "uncertainty": {
+              "confidence": 0.75
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "assets": [
+    {
+      "asset_id": "ranking_methodology",
+      "content_role": "documentation",
+      "uri": "repo://hackathon_april2026/scripts/rank_hypotheses.py",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "media_type": "text/x-python"
+    }
+  ],
+  "links": [
+    {
+      "rel": "derived_from",
+      "target": "01JSHYP00001CO2RRSPILLOVER",
+      "basis": "shared_prediction_target",
+      "notes": "CO spillover hypothesis evaluated in this ranking"
+    },
+    {
+      "rel": "derived_from",
+      "target": "01JSHYP00002CO2RRELECTRONIC",
+      "basis": "shared_prediction_target",
+      "notes": "Electronic modification hypothesis evaluated in this ranking"
+    },
+    {
+      "rel": "derived_from",
+      "target": "01JFH5Z0A3S9H2ZI5X9P6M4O0E",
+      "basis": "analysis_pipeline_output",
+      "notes": "Cu-Au CO2RR performance data used as evidence in ranking"
+    }
+  ]
+}

@@ -1,0 +1,209 @@
+{
+  "isaac_record_version": "1.05",
+  "record_id": "01JSHYP00002CO2RRELECTRONIC",
+  "record_type": "hypothesis",
+  "record_domain": "hypothesis",
+  "source_type": "computation",
+  "timestamps": {
+    "created_utc": "2026-04-07T15:00:00Z"
+  },
+  "sample": {
+    "material": {
+      "name": "Cu-Au alloy/interface for CO2RR",
+      "formula": "CuAu",
+      "provenance": "theoretical"
+    },
+    "sample_form": "slab_model"
+  },
+  "system": {
+    "domain": "analytical",
+    "technique": "hypothesis_generation",
+    "instrument": {
+      "instrument_type": "reasoning_engine",
+      "instrument_name": "claude_hypothesis_agent",
+      "vendor_or_project": "ISAAC"
+    },
+    "configuration": {
+      "model_version": "claude-opus-4-6"
+    }
+  },
+  "context": {
+    "environment": "in_situ",
+    "temperature_K": 298.15,
+    "electrochemistry": {
+      "reaction": "CO2RR",
+      "cell_type": "flow_cell",
+      "control_mode": "potentiostatic",
+      "potential_setpoint_V": -1.0,
+      "potential_scale": "RHE",
+      "electrolyte": {
+        "name": "KHCO3",
+        "concentration_M": 1.0
+      }
+    }
+  },
+  "hypothesis": {
+    "statement": "Electronic modification of Cu surface states by neighboring Au atoms is the primary driver of C2H4 selectivity in Cu-Au electrodes, not CO spillover. The Au d-band interaction shifts the Cu d-band center, weakening H* binding and suppressing HER while maintaining CO* binding for C-C coupling.",
+    "hypothesis_type": "mechanistic",
+    "scope": {
+      "material_system": "Cu-Au",
+      "reaction": "CO2RR",
+      "conditions_summary": "Any Cu-Au configuration including alloys, interfaces, and patterned electrodes",
+      "transferability": {
+        "generalizable_to": [
+          {
+            "material_system": "Cu-Ag",
+            "basis": "Ag has a different d-band position than Au, so the electronic effect may differ significantly",
+            "confidence": "low"
+          }
+        ],
+        "mechanism_class": "electronic_modification",
+        "generality_level": "system_specific"
+      }
+    },
+    "origin": {
+      "source_type": "computational_screening",
+      "source_details": {
+        "tool": "UMA",
+        "query": "Compare adsorption energies on Cu(111), Au(111), Cu3Au(111)"
+      },
+      "reasoning_chain": [
+        {
+          "step": 1,
+          "statement": "UMA shows Cu3Au(111) has dramatically different H* binding (E_ads = +0.16 eV) compared to Cu(111) (E_ads = -0.07 eV), indicating Au strongly modifies Cu electronic structure",
+          "basis": "computation",
+          "reference": "UMA benchmark: Cu3Au(111) vs Cu(111)"
+        },
+        {
+          "step": 2,
+          "statement": "Weaker H* binding on Cu3Au suppresses HER, redirecting selectivity toward CO2RR products",
+          "basis": "mechanism_analysis",
+          "depends_on": [1]
+        },
+        {
+          "step": 3,
+          "statement": "CO binding on Cu3Au(111) is +0.04 eV (vs -0.42 eV on Cu(111)), suggesting the electronic effect may be too strong for C-C coupling — intermediate compositions may be optimal",
+          "basis": "computation",
+          "reference": "UMA benchmark: E_ads(CO/Cu3Au111) = +0.04 eV"
+        },
+        {
+          "step": 4,
+          "statement": "If electronic modification dominates, C2H4 selectivity should correlate with Au content in the surface layer, not with geometric patterning",
+          "basis": "inference",
+          "depends_on": [1, 2, 3]
+        }
+      ]
+    },
+    "mechanism": {
+      "description": "Au atoms in or near the Cu surface modify the Cu d-band center via ligand and strain effects, weakening H* binding (suppressing HER) while shifting CO* binding to an intermediate strength favorable for C-C coupling.",
+      "species_involved": ["CO*", "H*", "OCCO*", "C2H4"],
+      "rate_limiting_step": "C-C coupling (CO* + CO* -> OCCO*) on electronically modified Cu sites"
+    },
+    "predictions": [
+      {
+        "prediction_id": "P-001",
+        "descriptor_name": "faradaic_efficiency.H2",
+        "direction": "decrease",
+        "reference_condition": "pure Cu electrode",
+        "magnitude": "HER suppressed by >50% on Cu-Au vs pure Cu",
+        "test_domain": "performance",
+        "falsification_criterion": "If HER is unchanged on Cu-Au alloy surfaces vs pure Cu, electronic modification of H* binding is not significant",
+        "falsification_quantitative": {
+          "descriptor_name": "faradaic_efficiency.H2",
+          "operator": "greater_than",
+          "threshold": 0.9,
+          "unit": "fraction_of_pure_Cu_value"
+        }
+      },
+      {
+        "prediction_id": "P-002",
+        "descriptor_name": "faradaic_efficiency.C2H4",
+        "direction": "correlation",
+        "reference_condition": "varying Au surface fraction",
+        "magnitude": "C2H4 FE should correlate with surface Au fraction, not domain spacing",
+        "test_domain": "performance",
+        "falsification_criterion": "If two electrodes with the same Au surface fraction but different domain spacings show different C2H4 FE, geometry (not electronics) matters"
+      },
+      {
+        "prediction_id": "P-003",
+        "descriptor_name": "d_band_center.Cu_surface",
+        "direction": "decrease",
+        "reference_condition": "pure Cu(111) d-band center",
+        "magnitude": "d-band center shift of 0.2-0.5 eV for Cu sites adjacent to Au",
+        "magnitude_range": {
+          "min": 0.2,
+          "max": 0.5,
+          "unit": "eV"
+        },
+        "test_domain": "simulation",
+        "computation_context": {
+          "output_quantity": "E_DFT",
+          "method_family": "DFT",
+          "functional_name": "PBE"
+        },
+        "falsification_criterion": "If DFT shows <0.1 eV d-band shift for Cu adjacent to Au, electronic modification is negligible",
+        "falsification_quantitative": {
+          "descriptor_name": "d_band_center.Cu_surface",
+          "operator": "less_than",
+          "threshold": 0.1,
+          "unit": "eV"
+        }
+      }
+    ],
+    "group": {
+      "group_id": "HG-CUAU-CO2RR-MECHANISMS",
+      "group_label": "Cu-Au CO2RR selectivity mechanisms",
+      "role_in_group": "alternative"
+    },
+    "confidence": {
+      "prior": 0.35,
+      "basis": "UMA shows large binding energy changes on Cu3Au, but the geometry-dependent experimental data (80um vs 160um stripe width matters) is hard to explain by pure electronic effects since both geometries have the same Au surface fraction."
+    }
+  },
+  "descriptors": {
+    "outputs": [
+      {
+        "label": "initial_evaluation",
+        "generated_utc": "2026-04-07T15:00:00Z",
+        "generated_by": {
+          "agent": "hypothesis_generator",
+          "version": "1.0"
+        },
+        "descriptors": [
+          {
+            "name": "hypothesis_status",
+            "kind": "categorical",
+            "source": "auto",
+            "value": "proposed",
+            "unit": "dimensionless",
+            "definition": "Current hypothesis status after evidence evaluation.",
+            "uncertainty": {
+              "confidence": 0.35
+            }
+          },
+          {
+            "name": "hypothesis_score",
+            "kind": "absolute",
+            "source": "auto",
+            "value": 0,
+            "unit": "dimensionless",
+            "definition": "Net evidence score: +1 per supporting, -1 per contradicting.",
+            "uncertainty": {
+              "sigma": 1,
+              "unit": "dimensionless"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "assets": [],
+  "links": [
+    {
+      "rel": "competes_with",
+      "target": "01JSHYP00001CO2RRSPILLOVER",
+      "basis": "shared_prediction_target",
+      "notes": "Alternative mechanism to CO spillover hypothesis. Both explain C2H4 enhancement but make different predictions about geometry dependence vs composition dependence."
+    }
+  ]
+}

@@ -1,0 +1,464 @@
+{
+  "hypothesis": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["statement", "hypothesis_type", "scope", "origin", "predictions"],
+    "properties": {
+      "statement": {
+        "type": "string",
+        "description": "One-sentence falsifiable claim."
+      },
+      "hypothesis_type": {
+        "type": "string",
+        "enum": [
+          "mechanistic",
+          "selectivity",
+          "activity",
+          "stability",
+          "scaling",
+          "structural",
+          "transport"
+        ],
+        "description": "Category of hypothesis from controlled vocabulary."
+      },
+      "scope": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["material_system"],
+        "properties": {
+          "material_system": {
+            "type": "string",
+            "description": "Short label for the material system, e.g. \"Cu-Au\"."
+          },
+          "reaction": {
+            "type": "string",
+            "enum": [
+              "CO2RR",
+              "CORR",
+              "OER",
+              "HER",
+              "ORR",
+              "NRR",
+              "N2RR",
+              "AOR",
+              "FOR",
+              "water_splitting",
+              "surface_oxidation",
+              "stripping_voltammetry",
+              "None"
+            ],
+            "description": "Electrochemical reaction. Reuses context.electrochemistry.reaction vocabulary."
+          },
+          "conditions_summary": {
+            "type": "string",
+            "description": "Free-text summary of applicable conditions."
+          },
+          "transferability": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "generalizable_to": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["material_system", "basis", "confidence"],
+                  "properties": {
+                    "material_system": {
+                      "type": "string",
+                      "description": "Target material system label."
+                    },
+                    "basis": {
+                      "type": "string",
+                      "description": "Reason for expecting transferability."
+                    },
+                    "confidence": {
+                      "type": "string",
+                      "enum": ["high", "moderate", "low"],
+                      "description": "Confidence in transferability to this system."
+                    }
+                  }
+                }
+              },
+              "mechanism_class": {
+                "type": "string",
+                "description": "Short label for the general mechanism type."
+              },
+              "generality_level": {
+                "type": "string",
+                "enum": ["system_specific", "class_specific", "universal"],
+                "description": "How broadly this hypothesis is expected to apply."
+              }
+            }
+          }
+        }
+      },
+      "origin": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["source_type", "reasoning_chain"],
+        "properties": {
+          "source_type": {
+            "type": "string",
+            "enum": [
+              "literature_synthesis",
+              "data_pattern",
+              "computational_screening",
+              "expert_reasoning",
+              "analogy",
+              "mechanistic_analysis"
+            ],
+            "description": "How this hypothesis was generated."
+          },
+          "source_details": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "tool": {
+                "type": "string",
+                "description": "Tool used to generate the hypothesis, e.g. \"Edison\", \"UMA\", \"Claude\"."
+              },
+              "query": {
+                "type": "string",
+                "description": "Query or input that produced this hypothesis."
+              },
+              "output_ref": {
+                "type": "string",
+                "description": "File path or URI to the analysis output."
+              }
+            }
+          },
+          "reasoning_chain": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["step", "statement", "basis"],
+              "properties": {
+                "step": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "Step number (1-indexed)."
+                },
+                "statement": {
+                  "type": "string",
+                  "description": "What was concluded in this step."
+                },
+                "basis": {
+                  "type": "string",
+                  "enum": [
+                    "observation",
+                    "computation",
+                    "literature",
+                    "inference",
+                    "analogy",
+                    "mechanism_analysis"
+                  ],
+                  "description": "Type of evidence or reasoning supporting this step."
+                },
+                "reference": {
+                  "type": "string",
+                  "description": "Record ID, DOI, or description supporting this step."
+                },
+                "depends_on": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer"
+                  },
+                  "description": "Step numbers of prior steps this inference builds on."
+                }
+              }
+            }
+          }
+        }
+      },
+      "mechanism": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["description", "species_involved"],
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "Prose description of the proposed mechanism."
+          },
+          "species_involved": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Chemical species involved, e.g. [\"CO*\", \"OCCO*\", \"H*\"]."
+          },
+          "elementary_steps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["reaction", "role"],
+              "properties": {
+                "reaction": {
+                  "type": "string",
+                  "description": "Reaction equation, e.g. \"CO* + CO* → OCCO*\"."
+                },
+                "role": {
+                  "type": "string",
+                  "enum": [
+                    "rate_limiting",
+                    "equilibrated",
+                    "irreversible",
+                    "unknown"
+                  ],
+                  "description": "Role of this step in the overall mechanism."
+                },
+                "reference_record_id": {
+                  "type": "string",
+                  "pattern": "^[0-9A-Z]{26}$",
+                  "description": "ULID of ISAAC evidence/intent record with data for this step."
+                }
+              }
+            }
+          },
+          "rate_limiting_step": {
+            "type": "string",
+            "description": "Which elementary step is rate-limiting."
+          },
+          "length_scale": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["value_m", "description", "determined_by"],
+            "properties": {
+              "value_m": {
+                "type": "number",
+                "description": "Characteristic length scale in meters."
+              },
+              "description": {
+                "type": "string",
+                "description": "What this length scale represents."
+              },
+              "determined_by": {
+                "type": "string",
+                "enum": [
+                  "diffusion",
+                  "electronic",
+                  "grain_size",
+                  "patterning",
+                  "strain_field",
+                  "nanostructure",
+                  "film_thickness"
+                ],
+                "description": "Physical origin that sets this length scale."
+              }
+            }
+          }
+        }
+      },
+      "predictions": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "prediction_id",
+            "descriptor_name",
+            "direction",
+            "falsification_criterion"
+          ],
+          "properties": {
+            "prediction_id": {
+              "type": "string",
+              "description": "Short identifier, e.g. \"P-001\"."
+            },
+            "descriptor_name": {
+              "type": "string",
+              "description": "Must match ISAAC descriptor vocabulary."
+            },
+            "direction": {
+              "type": "string",
+              "enum": [
+                "increase",
+                "decrease",
+                "no_change",
+                "non_monotonic",
+                "threshold",
+                "correlation"
+              ],
+              "description": "Predicted direction of change relative to reference condition."
+            },
+            "reference_condition": {
+              "type": "string",
+              "description": "What the direction is relative to, e.g. \"pure Cu(111)\"."
+            },
+            "reference_record_id": {
+              "type": "string",
+              "pattern": "^[0-9A-Z]{26}$",
+              "description": "ULID of the baseline ISAAC record for comparison."
+            },
+            "magnitude": {
+              "type": "string",
+              "description": "Human-readable magnitude description, e.g. \">0.2 eV difference\"."
+            },
+            "magnitude_range": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "min": {
+                  "type": "number"
+                },
+                "max": {
+                  "type": "number"
+                },
+                "unit": {
+                  "type": "string"
+                }
+              },
+              "description": "Machine-readable magnitude range."
+            },
+            "conditions": {
+              "type": "object",
+              "description": "Free-form conditions under which prediction holds."
+            },
+            "test_domain": {
+              "type": "string",
+              "enum": [
+                "characterization",
+                "performance",
+                "simulation"
+              ],
+              "description": "What kind of evidence tests this prediction."
+            },
+            "computation_context": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["output_quantity"],
+              "description": "Context for computational predictions only.",
+              "properties": {
+                "output_quantity": {
+                  "type": "string",
+                  "enum": [
+                    "E_DFT",
+                    "E_DFT_plus_ZPE",
+                    "delta_E",
+                    "delta_G_CHE",
+                    "delta_G_grand_canonical",
+                    "activation_energy_raw",
+                    "activation_energy_ZPE",
+                    "activation_free_energy"
+                  ],
+                  "description": "Exact reported quantity type."
+                },
+                "corrections_applied": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "zero_point_energy": { "type": "boolean" },
+                    "entropy": { "type": "boolean" },
+                    "thermal": { "type": "boolean" },
+                    "solvation": { "type": "boolean" },
+                    "dispersion": { "type": "boolean" },
+                    "grand_canonical": { "type": "boolean" },
+                    "PCET": { "type": "boolean" }
+                  }
+                },
+                "method_family": {
+                  "type": "string",
+                  "description": "Computational method family, e.g. \"DFT\", \"machine_learning\"."
+                },
+                "functional_name": {
+                  "type": "string",
+                  "description": "DFT functional name, e.g. \"PBE\"."
+                }
+              }
+            },
+            "falsification_criterion": {
+              "type": "string",
+              "description": "What observation would disprove this prediction."
+            },
+            "falsification_quantitative": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["descriptor_name", "operator", "unit"],
+              "description": "Machine-readable falsification criterion.",
+              "properties": {
+                "descriptor_name": {
+                  "type": "string",
+                  "description": "Descriptor to evaluate against."
+                },
+                "operator": {
+                  "type": "string",
+                  "enum": [
+                    "less_than",
+                    "greater_than",
+                    "equals",
+                    "not_equals",
+                    "within_range",
+                    "outside_range"
+                  ],
+                  "description": "Comparison operator for falsification."
+                },
+                "threshold": {
+                  "type": "number",
+                  "description": "Threshold value for single-bound operators."
+                },
+                "range_min": {
+                  "type": "number",
+                  "description": "Lower bound for range operators."
+                },
+                "range_max": {
+                  "type": "number",
+                  "description": "Upper bound for range operators."
+                },
+                "unit": {
+                  "type": "string",
+                  "description": "Unit of the threshold or range values."
+                }
+              }
+            }
+          }
+        }
+      },
+      "group": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["group_id", "role_in_group"],
+        "properties": {
+          "group_id": {
+            "type": "string",
+            "description": "Identifier for the competing hypothesis set."
+          },
+          "group_label": {
+            "type": "string",
+            "description": "Human-readable label for the hypothesis group."
+          },
+          "role_in_group": {
+            "type": "string",
+            "enum": [
+              "primary",
+              "alternative",
+              "null_hypothesis",
+              "refinement"
+            ],
+            "description": "Role this hypothesis plays within its group."
+          }
+        }
+      },
+      "confidence": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["prior", "basis"],
+        "properties": {
+          "prior": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Initial confidence before testing."
+          },
+          "basis": {
+            "type": "string",
+            "description": "Explanation of the initial confidence assessment."
+          }
+        }
+      }
+    }
+  }
+}

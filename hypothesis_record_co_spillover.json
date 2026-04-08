@@ -1,0 +1,304 @@
+{
+  "isaac_record_version": "1.05",
+  "record_id": "01JSHYP00001CO2RRSPILLOVER",
+  "record_type": "hypothesis",
+  "record_domain": "hypothesis",
+  "source_type": "literature",
+  "timestamps": {
+    "created_utc": "2026-04-07T14:00:00Z"
+  },
+  "sample": {
+    "material": {
+      "name": "Cu-Au patterned electrode for CO2RR",
+      "formula": "CuAu",
+      "provenance": "literature"
+    },
+    "sample_form": "film",
+    "electrode_type": "patterned_film",
+    "composition": {
+      "Cu_pct": 80,
+      "Au_pct": 20
+    }
+  },
+  "system": {
+    "domain": "analytical",
+    "technique": "hypothesis_generation",
+    "instrument": {
+      "instrument_type": "reasoning_engine",
+      "instrument_name": "claude_hypothesis_agent",
+      "vendor_or_project": "ISAAC"
+    },
+    "configuration": {
+      "model_version": "claude-opus-4-6",
+      "literature_search_tool": "Edison"
+    }
+  },
+  "context": {
+    "environment": "in_situ",
+    "temperature_K": 298.15,
+    "electrochemistry": {
+      "reaction": "CO2RR",
+      "cell_type": "flow_cell",
+      "control_mode": "potentiostatic",
+      "potential_setpoint_V": -1.0,
+      "potential_scale": "RHE",
+      "electrolyte": {
+        "name": "KHCO3",
+        "concentration_M": 1.0
+      },
+      "pH": 6.8,
+      "pH_basis": "nominal"
+    },
+    "transport": {
+      "flow_mode": "gas_diffusion",
+      "feed": {
+        "phase": "gas",
+        "composition": "CO2"
+      }
+    }
+  },
+  "hypothesis": {
+    "statement": "CO spillover from Au domains to Cu domains is the primary mechanism driving C2H4 selectivity enhancement in Cu-Au patterned electrodes, with selectivity scaling inversely with Au-to-Cu domain spacing at spacings below the CO diffusion length (~80 um).",
+    "hypothesis_type": "mechanistic",
+    "scope": {
+      "material_system": "Cu-Au",
+      "reaction": "CO2RR",
+      "conditions_summary": "Patterned Cu-Au electrodes in flow cell, -0.8 to -1.2V RHE, 1M KHCO3",
+      "transferability": {
+        "generalizable_to": [
+          {
+            "material_system": "Cu-Ag",
+            "basis": "Ag has similarly weak CO binding (E_ads ~ +0.01 eV on Ag(111)), making it an effective CO source like Au",
+            "confidence": "high"
+          },
+          {
+            "material_system": "Cu-Pd",
+            "basis": "Pd binds CO more strongly than Au (E_ads ~ -0.60 eV), so CO desorption and spillover may be kinetically limited",
+            "confidence": "moderate"
+          }
+        ],
+        "mechanism_class": "tandem_spillover",
+        "generality_level": "class_specific"
+      }
+    },
+    "origin": {
+      "source_type": "literature_synthesis",
+      "source_details": {
+        "tool": "Edison",
+        "query": "Cu-Au CO2 reduction C-C coupling selectivity mechanism"
+      },
+      "reasoning_chain": [
+        {
+          "step": 1,
+          "statement": "Au selectively reduces CO2 to CO with high faradaic efficiency (>90%) due to weak CO binding (E_ads ~ -0.01 eV on Au(111))",
+          "basis": "computation",
+          "reference": "UMA benchmark: E_ads(CO/Au111) = -0.01 eV"
+        },
+        {
+          "step": 2,
+          "statement": "Cu binds CO moderately (E_ads ~ -0.42 eV on Cu(111)), enabling subsequent C-C coupling to C2+ products",
+          "basis": "computation",
+          "reference": "UMA benchmark: E_ads(CO/Cu111) = -0.42 eV"
+        },
+        {
+          "step": 3,
+          "statement": "In Cu-Au patterned electrodes, CO produced on Au domains can diffuse to nearby Cu domains, increasing local CO coverage",
+          "basis": "literature",
+          "reference": "doi:10.1021/jacs.7b10410"
+        },
+        {
+          "step": 4,
+          "statement": "Higher local CO coverage on Cu promotes C-C coupling (CO* + CO* -> OCCO*), which is the rate-limiting step for C2H4 formation",
+          "basis": "mechanism_analysis",
+          "depends_on": [2, 3]
+        },
+        {
+          "step": 5,
+          "statement": "Geometry data confirms: 80um Cu / 20um Au striped electrode achieves 25.8% FE(C2H4) vs <1% on pure Cu, consistent with Cu domain size matching the CO diffusion length",
+          "basis": "observation",
+          "reference": "ISAAC records: Cu-Au CO2RR performance dataset"
+        }
+      ]
+    },
+    "mechanism": {
+      "description": "Tandem catalysis: Au domains selectively produce CO from CO2, which spills over to adjacent Cu domains where elevated CO* coverage promotes C-C coupling via the OCCO* intermediate pathway to C2H4.",
+      "species_involved": ["CO2", "CO*", "OCCO*", "C2H4", "H*", "OH*"],
+      "elementary_steps": [
+        {
+          "reaction": "CO2 + H2O + 2e- -> CO + 2OH- (on Au)",
+          "role": "equilibrated"
+        },
+        {
+          "reaction": "CO(Au) -> CO(Cu) (spillover/diffusion)",
+          "role": "unknown"
+        },
+        {
+          "reaction": "CO* + CO* -> OCCO* (on Cu)",
+          "role": "rate_limiting"
+        },
+        {
+          "reaction": "OCCO* + 4H+ + 4e- -> C2H4 + 2H2O",
+          "role": "equilibrated"
+        }
+      ],
+      "rate_limiting_step": "CO* + CO* -> OCCO* (C-C coupling on Cu)",
+      "length_scale": {
+        "value_m": 8e-5,
+        "description": "CO diffusion distance from Au to Cu domains under reaction conditions",
+        "determined_by": "diffusion"
+      }
+    },
+    "predictions": [
+      {
+        "prediction_id": "P-001",
+        "descriptor_name": "faradaic_efficiency.C2H4",
+        "direction": "increase",
+        "reference_condition": "pure Cu electrode (no Au)",
+        "magnitude": ">10x increase in FE(C2H4) at optimal geometry",
+        "test_domain": "performance",
+        "conditions": {
+          "potential_range_V_RHE": "-0.8 to -1.2",
+          "geometry": "Cu stripe width 60-100 um, Au stripe width 15-25 um"
+        },
+        "falsification_criterion": "If Cu-Au patterned electrodes show no C2H4 enhancement over pure Cu at any geometry, the spillover mechanism is falsified",
+        "falsification_quantitative": {
+          "descriptor_name": "faradaic_efficiency.C2H4",
+          "operator": "less_than",
+          "threshold": 0.02,
+          "unit": "fraction"
+        }
+      },
+      {
+        "prediction_id": "P-002",
+        "descriptor_name": "faradaic_efficiency.C2H4",
+        "direction": "non_monotonic",
+        "reference_condition": "varying Cu-to-Au stripe ratio",
+        "magnitude": "Maximum FE(C2H4) at Cu stripe width ~ CO diffusion length (~80 um)",
+        "test_domain": "performance",
+        "conditions": {
+          "potential_V_RHE": -1.0,
+          "Au_stripe_width_um": 20
+        },
+        "falsification_criterion": "If FE(C2H4) increases monotonically with Cu fraction (no optimum at a characteristic length scale), the diffusion-length argument is wrong"
+      },
+      {
+        "prediction_id": "P-003",
+        "descriptor_name": "faradaic_efficiency.CO",
+        "direction": "decrease",
+        "reference_condition": "pure Au electrode",
+        "magnitude": "CO FE should decrease as Cu-to-Au spacing decreases (more CO consumed by Cu)",
+        "test_domain": "performance",
+        "conditions": {
+          "potential_V_RHE": -1.0
+        },
+        "falsification_criterion": "If FE(CO) remains unchanged in Cu-Au patterned electrodes vs pure Au, CO is not transferring to Cu"
+      },
+      {
+        "prediction_id": "P-004",
+        "descriptor_name": "adsorption_energy.CO",
+        "direction": "increase",
+        "reference_condition": "Cu(111) far from Au",
+        "magnitude": "CO binding on Cu sites near Au should differ by <0.1 eV (electronic effect is secondary to transport)",
+        "magnitude_range": {
+          "min": 0,
+          "max": 0.1,
+          "unit": "eV"
+        },
+        "test_domain": "simulation",
+        "computation_context": {
+          "output_quantity": "delta_E",
+          "corrections_applied": {
+            "zero_point_energy": false,
+            "entropy": false,
+            "thermal": false,
+            "solvation": true,
+            "dispersion": true,
+            "grand_canonical": false,
+            "PCET": false
+          },
+          "method_family": "DFT",
+          "functional_name": "PBE"
+        },
+        "conditions": {
+          "surface": "Cu3Au(111) alloy vs pure Cu(111)"
+        },
+        "falsification_criterion": "If E_ads(CO) on Cu near Au differs by >0.3 eV from pure Cu(111), electronic modification (not spillover) is the dominant effect",
+        "falsification_quantitative": {
+          "descriptor_name": "adsorption_energy.CO",
+          "operator": "greater_than",
+          "threshold": 0.3,
+          "unit": "eV"
+        }
+      }
+    ],
+    "group": {
+      "group_id": "HG-CUAU-CO2RR-MECHANISMS",
+      "group_label": "Cu-Au CO2RR selectivity mechanisms",
+      "role_in_group": "primary"
+    },
+    "confidence": {
+      "prior": 0.65,
+      "basis": "Strong geometry-dependent experimental trend consistent with diffusion-limited spillover. UMA data shows expected binding energy trends (weak CO on Au, moderate on Cu). No direct CO transport measurement yet."
+    }
+  },
+  "descriptors": {
+    "outputs": [
+      {
+        "label": "initial_evaluation",
+        "generated_utc": "2026-04-07T14:00:00Z",
+        "generated_by": {
+          "agent": "hypothesis_generator",
+          "version": "1.0"
+        },
+        "descriptors": [
+          {
+            "name": "hypothesis_status",
+            "kind": "categorical",
+            "source": "auto",
+            "value": "proposed",
+            "unit": "dimensionless",
+            "definition": "Current hypothesis status after evidence evaluation. Vocabulary: proposed, supported, contradicted, eliminated, needs_more_data, superseded.",
+            "uncertainty": {
+              "confidence": 0.65
+            }
+          },
+          {
+            "name": "hypothesis_score",
+            "kind": "absolute",
+            "source": "auto",
+            "value": 3,
+            "unit": "dimensionless",
+            "definition": "Net evidence score: +1 per supporting observation, -1 per contradicting observation, 0 per neutral observation.",
+            "uncertainty": {
+              "sigma": 1,
+              "unit": "dimensionless"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "assets": [
+    {
+      "asset_id": "tandem_catalysis_ref",
+      "content_role": "auxiliary_reference",
+      "uri": "https://doi.org/10.1021/jacs.7b10410",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "media_type": "text/html"
+    },
+    {
+      "asset_id": "uma_benchmark_data",
+      "content_role": "documentation",
+      "uri": "repo://hackathon_april2026/results/uma_benchmark/",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  ],
+  "links": [
+    {
+      "rel": "derived_from",
+      "target": "01JFH5Z0A3S9H2ZI5X9P6M4O0E",
+      "basis": "abductive_inference",
+      "notes": "Hypothesis derived from geometry-dependent C2H4 selectivity in Cu-Au CO2RR performance evidence record"
+    }
+  ]
+}
