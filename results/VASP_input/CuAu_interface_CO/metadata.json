@@ -1,0 +1,23 @@
+{
+  "system_name": "CuAu_interface_CO",
+  "structure_name": "CuAu_interface",
+  "structure_kind": "interface",
+  "kmesh": [
+    1,
+    1,
+    1
+  ],
+  "species": "CO",
+  "placement": "interface",
+  "site_mode": "hollow",
+  "chosen_triplet": [
+    47,
+    88,
+    92
+  ],
+  "chosen_position": [
+    12.976116541554331,
+    4.1620913212790835,
+    7.063303193265883
+  ]
+}

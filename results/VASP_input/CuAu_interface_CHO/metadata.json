@@ -1,0 +1,22 @@
+{
+  "system_name": "CuAu_interface_CHO",
+  "structure_name": "CuAu_interface",
+  "structure_kind": "interface",
+  "kmesh": [
+    1,
+    1,
+    1
+  ],
+  "species": "CHO",
+  "placement": "interface",
+  "site_mode": "bridge",
+  "chosen_pair": [
+    43,
+    47
+  ],
+  "chosen_position": [
+    10.81343045129528,
+    3.7458821891511755,
+    7.063303193265883
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "system_name": "Cu111_COCO",
+  "structure_name": "Cu111",
+  "structure_kind": "pure",
+  "kmesh": [
+    5,
+    3,
+    1
+  ],
+  "species": "COCO",
+  "placement": "terrace",
+  "site_mode": "pair_cu_cu",
+  "triplet_a": [
+    42,
+    45,
+    46
+  ],
+  "triplet_b": [
+    42,
+    43,
+    46
+  ],
+  "hollow_pos_a": [
+    6.390477534973424,
+    3.689543925067161,
+    6.261363669361492
+  ],
+  "hollow_pos_b": [
+    7.668573041968109,
+    2.951635140053729,
+    6.261363669361492
+  ]
+}

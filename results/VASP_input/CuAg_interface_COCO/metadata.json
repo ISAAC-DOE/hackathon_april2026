@@ -1,0 +1,33 @@
+{
+  "system_name": "CuAg_interface_COCO",
+  "structure_name": "CuAg_interface",
+  "structure_kind": "interface",
+  "kmesh": [
+    1,
+    1,
+    1
+  ],
+  "species": "COCO",
+  "placement": "interface",
+  "site_mode": "pair_interface_cu_cu",
+  "triplet_a": [
+    47,
+    88,
+    92
+  ],
+  "triplet_b": [
+    43,
+    47,
+    88
+  ],
+  "hollow_pos_a": [
+    13.00157238567705,
+    4.1702562870883595,
+    7.077159599726436
+  ],
+  "hollow_pos_b": [
+    11.556953231712935,
+    3.336205029670688,
+    7.077159599726436
+  ]
+}

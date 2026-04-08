@@ -1,0 +1,19 @@
+{
+  "system_name": "CuAu_interface_CHOH",
+  "structure_name": "CuAu_interface",
+  "structure_kind": "interface",
+  "kmesh": [
+    1,
+    1,
+    1
+  ],
+  "species": "CHOH",
+  "placement": "interface",
+  "site_mode": "top",
+  "chosen_index": 47,
+  "chosen_position": [
+    11.534325814714965,
+    4.9945095855349,
+    7.063303193265883
+  ]
+}

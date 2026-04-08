@@ -1,0 +1,17 @@
+{
+  "system_name": "Cu111_OCCO",
+  "structure_name": "Cu111",
+  "structure_kind": "pure",
+  "kmesh": [
+    5,
+    3,
+    1
+  ],
+  "species": "OCCO",
+  "placement": "terrace",
+  "site_mode": "pair_cu_cu",
+  "chosen_pair": [
+    42,
+    46
+  ]
+}

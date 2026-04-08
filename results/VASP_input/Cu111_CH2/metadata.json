@@ -1,0 +1,23 @@
+{
+  "system_name": "Cu111_CH2",
+  "structure_name": "Cu111",
+  "structure_kind": "pure",
+  "kmesh": [
+    5,
+    3,
+    1
+  ],
+  "species": "CH2",
+  "placement": "terrace",
+  "site_mode": "hollow",
+  "chosen_triplet": [
+    42,
+    45,
+    46
+  ],
+  "chosen_position": [
+    6.390477534973424,
+    3.689543925067161,
+    6.261363669361492
+  ]
+}

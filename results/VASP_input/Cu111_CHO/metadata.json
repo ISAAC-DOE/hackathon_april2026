@@ -1,0 +1,22 @@
+{
+  "system_name": "Cu111_CHO",
+  "structure_name": "Cu111",
+  "structure_kind": "pure",
+  "kmesh": [
+    5,
+    3,
+    1
+  ],
+  "species": "CHO",
+  "placement": "terrace",
+  "site_mode": "bridge",
+  "chosen_pair": [
+    42,
+    46
+  ],
+  "chosen_position": [
+    7.029525288470767,
+    3.3205895325604455,
+    6.261363669361492
+  ]
+}

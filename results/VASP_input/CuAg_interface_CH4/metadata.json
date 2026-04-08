@@ -1,0 +1,19 @@
+{
+  "system_name": "CuAg_interface_CH4",
+  "structure_name": "CuAg_interface",
+  "structure_kind": "interface",
+  "kmesh": [
+    1,
+    1,
+    1
+  ],
+  "species": "CH4",
+  "placement": "interface",
+  "site_mode": "top",
+  "chosen_index": 47,
+  "chosen_position": [
+    11.556953231712933,
+    5.004307544506032,
+    7.077159599726435
+  ]
+}
