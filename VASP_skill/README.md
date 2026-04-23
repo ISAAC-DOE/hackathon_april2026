@@ -7,21 +7,21 @@ Skill for generating and running multi-step VASP workflows on CO2RR on bimetalli
 This repo separates workflow orchestration from single-step input generation:
 
 - **`vasp_workflow_orchestrator`**: manages multi-step workflows, dependency tracking, file staging, job submission, monitoring, restart, and final summaries.
-- **`vasp_input_generator`**: generates VASP inputs for one calculation step at a time, including `POSCAR`, `INCAR`, `KPOINTS`, `submit.sh`, metadata, and ISAAC intent records. :contentReference[oaicite:0]{index=0} :contentReference[oaicite:1]{index=1}
+- **`vasp_input_generator`**: generates VASP inputs for one calculation step at a time, including `POSCAR`, `INCAR`, `KPOINTS`, `submit.sh`, metadata, and ISAAC intent records.
 
 ## Supported Workflows
 
 ### Single system
 For one surface or surface–adsorbate system:
 - `relax`
-- then `freq`, `solvation`, and `static` in parallel. :contentReference[oaicite:2]{index=2}
+- then `freq`, `solvation`, and `static` in parallel. 
 
 ### Reaction pathway
 For reactant/product endpoint analysis and barriers:
 - `reactant_relax` + `product_relax`
 - optional endpoint post-processing
 - optional `neb`
-- optional `ts_freq` + `ts_solvation` from the highest-energy NEB image. :contentReference[oaicite:3]{index=3}
+- optional `ts_freq` + `ts_solvation` from the highest-energy NEB image.
 
 ## Supported Systems
 
@@ -53,7 +53,7 @@ with calculation modes:
 ### Resume or retry
 > “Resume an interrupted workflow from `workflow_state.json`.”
 
-> “Retry the failed frequency calculation step.” :contentReference[oaicite:5]{index=5} :contentReference[oaicite:6]{index=6}
+> “Retry the failed frequency calculation step.”
 
 ## How it Works
 
@@ -61,17 +61,17 @@ with calculation modes:
 2. Ready steps are staged from parent `CONTCAR` files when needed.
 3. The input generator creates the VASP input set for each step.
 4. Jobs are submitted and tracked until completion.
-5. Results are summarized in `workflow_summary.json`. :contentReference[oaicite:7]{index=7}
+5. Results are summarized in `workflow_summary.json`. 
 
 ## Key Outputs
 
 - Per-step VASP directories
 - `workflow_state.json` for restart/resume
 - `workflow_summary.json` for energies, frequencies, and NEB barriers
-- `metadata.json` and `isaac_intent_record.json` for each generated step. :contentReference[oaicite:8]{index=8} :contentReference[oaicite:9]{index=9}
+- `metadata.json` and `isaac_intent_record.json` for each generated step.
 
 ## Notes
 
-- The orchestrator does **not** generate VASP inputs itself; it calls the input generator for each step. :contentReference[oaicite:10]{index=10}
-- NEB generation requires endpoint structures and VTST-enabled VASP support. :contentReference[oaicite:11]{index=11}
-- Custodian-based error recovery is supported when enabled. :contentReference[oaicite:12]{index=12}
+- The orchestrator does **not** generate VASP inputs itself; it calls the input generator for each step.
+- NEB generation requires endpoint structures and VTST-enabled VASP support.
+- Custodian-based error recovery is supported when enabled.
