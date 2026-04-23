@@ -36,7 +36,7 @@ with calculation modes:
 - `freq`
 - `solvation`
 - `cp`
-- `neb`. :contentReference[oaicite:4]{index=4}
+- `neb`
 
 ## Sample Usage
 
