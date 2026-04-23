@@ -1,0 +1,424 @@
+{
+  "skill": {
+    "name": "vasp_workflow_orchestrator",
+    "version": "2.0",
+    "description": "Manage multi-step VASP calculation workflows with dependency tracking, file staging, parallel step execution, and job monitoring. This skill does NOT generate VASP input files — it calls the vasp_input_generator skill for each step.",
+
+    "trigger": "User requests a multi-step VASP workflow such as a full relaxation-plus-analysis pipeline or a reaction pathway calculation.",
+
+    "depends_on": {
+      "skill": "vasp_input_generator",
+      "version": ">=5.0",
+      "relationship": "The orchestrator calls the input generator for each workflow step."
+    },
+
+    "inputs": [
+      {
+        "name": "workflow_type",
+        "type": "string",
+        "required": true,
+        "description": "The type of workflow to execute.",
+        "options": ["single_system", "reaction_pathway"]
+      },
+      {
+        "name": "surface_name",
+        "type": "string",
+        "required": true,
+        "description": "Passed through to the input generator."
+      },
+      {
+        "name": "adsorbate",
+        "type": "string",
+        "required": false,
+        "default": null,
+        "description": "For single_system workflows."
+      },
+      {
+        "name": "reactant_adsorbate",
+        "type": "string",
+        "required": false,
+        "default": null,
+        "description": "For reaction_pathway workflows."
+      },
+      {
+        "name": "product_adsorbate",
+        "type": "string",
+        "required": false,
+        "default": null,
+        "description": "For reaction_pathway workflows."
+      },
+      {
+        "name": "steps_to_run",
+        "type": "list",
+        "required": false,
+        "default": ["relax", "freq", "solvation", "static"],
+        "description": "Which steps to include. Relax always runs first.",
+        "options_per_item": ["freq", "solvation", "static", "cp", "neb"]
+      },
+      {
+        "name": "include_neb",
+        "type": "boolean",
+        "required": false,
+        "default": false,
+        "description": "Whether to include NEB. Only valid for reaction_pathway."
+      },
+      {
+        "name": "include_ts_analysis",
+        "type": "boolean",
+        "required": false,
+        "default": true,
+        "description": "Whether to run freq and solvation on the transition state after NEB."
+      },
+      {
+        "name": "neb_images",
+        "type": "integer",
+        "required": false,
+        "default": 6,
+        "description": "Passed through to input generator for NEB."
+      },
+      {
+        "name": "interface_match_mode",
+        "type": "string",
+        "required": false,
+        "default": "strained_cu",
+        "description": "Passed through to input generator."
+      },
+      {
+        "name": "use_custodian",
+        "type": "boolean",
+        "required": false,
+        "default": true,
+        "description": "Passed through to input generator."
+      },
+      {
+        "name": "output_root",
+        "type": "string",
+        "required": false,
+        "default": "./workflow",
+        "description": "Root directory for the workflow."
+      },
+      {
+        "name": "poll_interval_seconds",
+        "type": "integer",
+        "required": false,
+        "default": 120,
+        "description": "How often to check job completion."
+      }
+    ],
+
+    "outputs": [
+      {
+        "name": "workflow_state.json",
+        "format": "JSON",
+        "description": "Persistent state file tracking every step. Enables restart."
+      },
+      {
+        "name": "workflow_summary.json",
+        "format": "JSON",
+        "description": "Final summary with energies, frequencies, solvation corrections, and barriers."
+      },
+      {
+        "name": "step directories",
+        "description": "Each step produces a subdirectory with all VASP files."
+      }
+    ],
+
+    "workflow_definitions": {
+
+      "single_system": {
+        "description": "Full analysis pipeline for one surface-adsorbate system.",
+        "dag": {
+          "relax": {
+            "depends_on": [],
+            "input_generator_call": {
+              "calculation_mode": "relax",
+              "parent_contcar_path": null
+            }
+          },
+          "freq": {
+            "depends_on": ["relax"],
+            "input_generator_call": {
+              "calculation_mode": "freq",
+              "parent_contcar_path": "{relax_dir}/CONTCAR"
+            },
+            "parallel_group": "post_relax"
+          },
+          "solvation": {
+            "depends_on": ["relax"],
+            "input_generator_call": {
+              "calculation_mode": "solvation",
+              "parent_contcar_path": "{relax_dir}/CONTCAR"
+            },
+            "parallel_group": "post_relax"
+          },
+          "static": {
+            "depends_on": ["relax"],
+            "input_generator_call": {
+              "calculation_mode": "static",
+              "parent_contcar_path": "{relax_dir}/CONTCAR"
+            },
+            "parallel_group": "post_relax"
+          }
+        },
+        "parallel_groups": {
+          "post_relax": {
+            "members": ["freq", "solvation", "static"],
+            "trigger": "All become ready when relax completes."
+          }
+        }
+      },
+
+      "reaction_pathway": {
+        "description": "Full reaction analysis: relax both endpoints, optional NEB, analyze transition state.",
+        "dag": {
+          "reactant_relax": {
+            "depends_on": [],
+            "input_generator_call": {
+              "calculation_mode": "relax",
+              "adsorbate": "{reactant_adsorbate}"
+            },
+            "parallel_group": "endpoint_relax"
+          },
+          "product_relax": {
+            "depends_on": [],
+            "input_generator_call": {
+              "calculation_mode": "relax",
+              "adsorbate": "{product_adsorbate}"
+            },
+            "parallel_group": "endpoint_relax"
+          },
+          "reactant_freq": {
+            "depends_on": ["reactant_relax"],
+            "input_generator_call": {
+              "calculation_mode": "freq",
+              "parent_contcar_path": "{reactant_relax_dir}/CONTCAR"
+            },
+            "parallel_group": "reactant_post_relax"
+          },
+          "reactant_solvation": {
+            "depends_on": ["reactant_relax"],
+            "input_generator_call": {
+              "calculation_mode": "solvation",
+              "parent_contcar_path": "{reactant_relax_dir}/CONTCAR"
+            },
+            "parallel_group": "reactant_post_relax"
+          },
+          "reactant_static": {
+            "depends_on": ["reactant_relax"],
+            "input_generator_call": {
+              "calculation_mode": "static",
+              "parent_contcar_path": "{reactant_relax_dir}/CONTCAR"
+            },
+            "parallel_group": "reactant_post_relax"
+          },
+          "product_freq": {
+            "depends_on": ["product_relax"],
+            "input_generator_call": {
+              "calculation_mode": "freq",
+              "parent_contcar_path": "{product_relax_dir}/CONTCAR"
+            },
+            "parallel_group": "product_post_relax"
+          },
+          "product_solvation": {
+            "depends_on": ["product_relax"],
+            "input_generator_call": {
+              "calculation_mode": "solvation",
+              "parent_contcar_path": "{product_relax_dir}/CONTCAR"
+            },
+            "parallel_group": "product_post_relax"
+          },
+          "product_static": {
+            "depends_on": ["product_relax"],
+            "input_generator_call": {
+              "calculation_mode": "static",
+              "parent_contcar_path": "{product_relax_dir}/CONTCAR"
+            },
+            "parallel_group": "product_post_relax"
+          },
+          "neb": {
+            "depends_on": ["reactant_relax", "product_relax"],
+            "conditional": "include_neb == true",
+            "input_generator_call": {
+              "calculation_mode": "neb",
+              "parent_contcar_path": "{reactant_relax_dir}/CONTCAR",
+              "product_contcar_path": "{product_relax_dir}/CONTCAR"
+            }
+          },
+          "ts_freq": {
+            "depends_on": ["neb"],
+            "conditional": "include_neb == true AND include_ts_analysis == true",
+            "input_generator_call": {
+              "calculation_mode": "freq",
+              "parent_contcar_path": "{neb_dir}/highest_energy_image/CONTCAR"
+            },
+            "parallel_group": "ts_post_neb"
+          },
+          "ts_solvation": {
+            "depends_on": ["neb"],
+            "conditional": "include_neb == true AND include_ts_analysis == true",
+            "input_generator_call": {
+              "calculation_mode": "solvation",
+              "parent_contcar_path": "{neb_dir}/highest_energy_image/CONTCAR"
+            },
+            "parallel_group": "ts_post_neb"
+          }
+        },
+        "parallel_groups": {
+          "endpoint_relax": {
+            "members": ["reactant_relax", "product_relax"],
+            "trigger": "Both start immediately."
+          },
+          "reactant_post_relax": {
+            "members": ["reactant_freq", "reactant_solvation", "reactant_static"],
+            "trigger": "All ready when reactant_relax completes."
+          },
+          "product_post_relax": {
+            "members": ["product_freq", "product_solvation", "product_static"],
+            "trigger": "All ready when product_relax completes."
+          },
+          "ts_post_neb": {
+            "members": ["ts_freq", "ts_solvation"],
+            "trigger": "Both ready when neb completes."
+          }
+        }
+      }
+    },
+
+    "file_staging": {
+      "general_rules": [
+        "When a step depends on a parent, the parent's CONTCAR is copied to the child's POSCAR BEFORE calling the input generator.",
+        "The copy happens AFTER the parent is confirmed complete.",
+        "If the parent CONTCAR does not exist or is empty, the step fails.",
+        "The original CONTCAR is never modified — always copy."
+      ],
+
+      "step_specific_rules": {
+        "relax_to_downstream": "Copy CONTCAR from relax directory to child directory as POSCAR.",
+        "relax_pair_to_neb": [
+          "Copy reactant CONTCAR to {neb_dir}/00/POSCAR.",
+          "Copy product CONTCAR to {neb_dir}/{neb_images+1:02d}/POSCAR.",
+          "Generate interpolated images for directories 01 through {neb_images:02d} using linear interpolation in fractional coordinates or a tool like VTST nebmake.pl."
+        ],
+        "neb_to_ts_analysis": [
+          "Parse the energy of each NEB image from OSZICAR or OUTCAR.",
+          "Identify the highest-energy image (transition state).",
+          "Copy that image's CONTCAR to ts_freq and ts_solvation directories as POSCAR."
+        ]
+      }
+    },
+
+    "job_management": {
+      "step_statuses": ["pending", "ready", "submitted", "running", "completed", "failed", "skipped"],
+
+      "status_transitions": {
+        "pending_to_ready": "All dependencies completed.",
+        "ready_to_submitted": "Inputs generated and job submitted.",
+        "submitted_to_completed": "OUTCAR contains completion marker.",
+        "submitted_to_failed": "Job exited with error or Custodian exhausted retries.",
+        "pending_to_skipped": "Conditional step whose condition is false."
+      },
+
+      "completion_detection": {
+        "markers": [
+          "'reached required accuracy' — relaxation converged.",
+          "'General timing' — VASP finished normally.",
+          "For NEB: all images have completion markers."
+        ]
+      }
+    },
+
+    "orchestration_loop": [
+      "1. Load or initialize workflow_state.json.",
+      "2. Build the DAG for the requested workflow_type.",
+      "3. Mark conditional steps as skipped if conditions are false.",
+      "4. Identify steps with all dependencies completed. Mark as ready.",
+      "5. For each ready step: stage files, call input generator, submit job, mark as submitted.",
+      "6. Save workflow_state.json.",
+      "7. Wait poll_interval_seconds.",
+      "8. Check submitted steps for completion.",
+      "9. For completed steps, check if pending steps now have all dependencies met.",
+      "10. Repeat from step 5 until all steps are completed, failed, or skipped.",
+      "11. Write workflow_summary.json."
+    ],
+
+    "restart_capability": {
+      "mechanism": [
+        "On startup, check if workflow_state.json exists.",
+        "If yes, load and resume from current state.",
+        "Completed steps are not re-run.",
+        "Submitted steps are re-checked for completion.",
+        "Failed steps can be retried by resetting status to pending."
+      ]
+    },
+
+    "directory_structure": {
+      "single_system": [
+        "{output_root}/{surface}_{adsorbate}/relax/",
+        "{output_root}/{surface}_{adsorbate}/freq/",
+        "{output_root}/{surface}_{adsorbate}/solvation/",
+        "{output_root}/{surface}_{adsorbate}/static/"
+      ],
+      "reaction_pathway": [
+        "{output_root}/{surface}_{reactant}/relax/",
+        "{output_root}/{surface}_{reactant}/freq/",
+        "{output_root}/{surface}_{reactant}/solvation/",
+        "{output_root}/{surface}_{reactant}/static/",
+        "{output_root}/{surface}_{product}/relax/",
+        "{output_root}/{surface}_{product}/freq/",
+        "{output_root}/{surface}_{product}/solvation/",
+        "{output_root}/{surface}_{product}/static/",
+        "{output_root}/{surface}_{reactant}_to_{product}/neb/",
+        "{output_root}/{surface}_{reactant}_to_{product}/neb/00/ through {neb_images+1}/",
+        "{output_root}/{surface}_{reactant}_to_{product}/ts_freq/",
+        "{output_root}/{surface}_{reactant}_to_{product}/ts_solvation/"
+      ],
+      "state_files": [
+        "{output_root}/workflow_state.json",
+        "{output_root}/workflow_summary.json"
+      ]
+    },
+
+    "workflow_summary_contents": {
+      "fields": {
+        "system_info": "Surface, adsorbate(s), interface mode.",
+        "relax_energy_eV": "Total energy from relaxation.",
+        "static_energy_eV": "Total energy from static calculation.",
+        "solvation_energy_eV": "Total energy from solvation. Correction = solvation - relax.",
+        "frequencies_cm_inv": "Vibrational frequencies.",
+        "zero_point_energy_eV": "Sum of 0.5 * h * nu for real frequencies.",
+        "imaginary_frequencies": "Count and values. Zero for minimum, one for TS.",
+        "neb_barrier_eV": "Highest image energy minus reactant energy.",
+        "neb_reaction_energy_eV": "Product energy minus reactant energy.",
+        "ts_frequencies_cm_inv": "TS frequencies. Should have exactly one imaginary.",
+        "ts_solvation_energy_eV": "Solvation energy at TS geometry."
+      }
+    },
+
+    "failure_handling": [
+      {"condition": "Step fails with downstream dependents.", "action": "Mark downstream as blocked. Log affected steps."},
+      {"condition": "Step fails with no dependents.", "action": "Log failure. Continue other branches."},
+      {"condition": "File staging fails (CONTCAR missing).", "action": "Mark child step as failed."},
+      {"condition": "NEB highest-energy image cannot be determined.", "action": "Mark ts_freq and ts_solvation as failed."},
+      {"condition": "Workflow interrupted.", "action": "On restart, load workflow_state.json and resume."},
+      {"condition": "User requests retry of failed step.", "action": "Reset status to pending."},
+      {"condition": "All steps completed.", "action": "Write workflow_summary.json."}
+    ],
+
+    "validation_rules": [
+      {"rule": "workflow_type must be valid.", "on_violation": "Reject."},
+      {"rule": "reaction_pathway requires both reactant and product adsorbates.", "on_violation": "Reject."},
+      {"rule": "NEB requires both endpoint relaxations completed.", "on_violation": "NEB stays pending."},
+      {"rule": "steps_to_run items must be valid.", "on_violation": "Reject."},
+      {"rule": "include_neb only valid for reaction_pathway.", "on_violation": "Ignore and warn."},
+      {"rule": "Input generator skill must be available at required version.", "on_violation": "Raise error."}
+    ],
+
+    "examples": [
+      "Run the full analysis workflow for CO on Cu(111): relax, then freq + solvation + static in parallel.",
+      "Run the reaction pathway for CO to CHO on Cu-Au interface: relax both, NEB, analyze TS.",
+      "Resume an interrupted workflow from workflow_state.json.",
+      "Retry a failed frequency calculation.",
+      "Run only relaxation and solvation for CH3 on Cu-Ag interface."
+    ]
+  }
+}

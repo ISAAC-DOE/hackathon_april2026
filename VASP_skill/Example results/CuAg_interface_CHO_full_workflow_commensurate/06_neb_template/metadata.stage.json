@@ -1,0 +1,10 @@
+{
+  "skill_name": "vasp_input_generator",
+  "skill_version": "6.2",
+  "surface_name": "CuAg_interface",
+  "adsorbate": "CHO",
+  "calculation_mode": "neb",
+  "status": "template_waiting_for_endpoints",
+  "parent_contcar_expected": "../01_relax/CONTCAR",
+  "product_contcar_expected": "<set_product_endpoint/CONTCAR>"
+}

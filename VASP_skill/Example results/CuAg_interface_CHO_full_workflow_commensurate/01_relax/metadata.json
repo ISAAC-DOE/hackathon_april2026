@@ -1,0 +1,105 @@
+{
+  "skill_name": "vasp_input_generator",
+  "skill_version": "6.2",
+  "surface_name": "CuAg_interface",
+  "adsorbate": "CHO",
+  "calculation_mode": "relax",
+  "interface_match_mode": "commensurate_1d",
+  "placement_region": "interface",
+  "site_mode_override": "site_auto",
+  "use_custodian": true,
+  "commensurate_pair": {
+    "Cu_repeats_m": 9,
+    "Ag_repeats_n": 8
+  },
+  "matched_direction": "b",
+  "residual_mismatch_percent": 0.4691596522699071,
+  "common_supercell_length_b_angstrom": 23.059812794665095,
+  "strain_percent": {
+    "Cu_along_b": 0.23513139695712226,
+    "Ag_along_b": -0.2340308370044064
+  },
+  "slab": {
+    "layers": 4,
+    "repeats_per_side_along_a": 4,
+    "total_atom_count": 275,
+    "metal_atom_counts": {
+      "Cu": 144,
+      "Ag": 128
+    },
+    "adsorbate_atom_counts": {
+      "C": 1,
+      "O": 1,
+      "H": 1
+    },
+    "a_vector_angstrom": [
+      23.113906463425867,
+      0,
+      0
+    ],
+    "b_vector_angstrom": [
+      0,
+      23.059812794665095,
+      0
+    ],
+    "c_vector_angstrom": [
+      0,
+      0,
+      22.077159599726436
+    ],
+    "interlayer_spacing_angstrom": 2.359053199908811,
+    "all_layers_identical_z_between_metals": true,
+    "bottom_layer_z_angstrom": 0.0,
+    "top_layer_z_angstrom": 7.077159599726434
+  },
+  "interface_boundary": {
+    "description": "Detected near the middle of the cell along a.",
+    "approximate_x_angstrom": 11.556953231712933,
+    "runs_along": "b"
+  },
+  "adsorbate_site": {
+    "site_type": "bridge",
+    "bridge_pair_type": "cross_boundary",
+    "bridge_pair_elements": [
+      "Cu",
+      "Ag"
+    ],
+    "bridge_pair_distance_angstrom": 2.8892383079282347,
+    "bridge_pair_midpoint_cartesian_angstrom": [
+      11.556953231712933,
+      11.529906397332546,
+      7.077159599726434
+    ],
+    "anchor_carbon_cartesian_angstrom": [
+      11.556953231712933,
+      11.529906397332546,
+      8.577159599726434
+    ],
+    "oxygen_cartesian_angstrom": [
+      12.650611719948127,
+      11.529906397332546,
+      8.9638262663931
+    ],
+    "hydrogen_cartesian_angstrom": [
+      11.043122304050708,
+      12.419887670543767,
+      8.940492933059767
+    ],
+    "distance_to_boundary_angstrom": 0.0,
+    "pair_vector_cartesian_angstrom": [
+      2.8892383079282347,
+      1.7763568394002505e-15,
+      0.0
+    ]
+  },
+  "kpoints": [
+    1,
+    1,
+    1
+  ],
+  "notes": [
+    "Commensurate matching applied along cell vector b only.",
+    "All metal layers share identical z-coordinates using Ag-derived d111 spacing.",
+    "Bottom metal layer fixed; upper three metal layers and adsorbate atoms relaxed."
+  ]
+}

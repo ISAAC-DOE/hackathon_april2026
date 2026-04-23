@@ -1,0 +1,7 @@
+Placeholder POTCAR
+==================
+Supply licensed PAW-PBE pseudopotentials in this exact POSCAR order:
+Cu Ag C O H
+
+Example concatenation order:
+cat POTCAR.Cu POTCAR.Ag POTCAR.C POTCAR.O POTCAR.H > POTCAR

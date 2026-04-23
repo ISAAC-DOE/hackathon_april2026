@@ -1,0 +1,25 @@
+{
+  "skill_name": "vasp_input_generator",
+  "skill_version": "6.2",
+  "workflow_name": "CuAg_interface_CHO_full_workflow_commensurate_v62",
+  "surface": "CuAg_interface",
+  "adsorbate": "CHO",
+  "interface_match_mode": "commensurate_1d",
+  "commensurate_pair": {
+    "m": 9,
+    "n": 8
+  },
+  "residual_mismatch_percent": 0.4691596522699071,
+  "generated_now": [
+    "01_relax"
+  ],
+  "staged_waiting_on_parent": [
+    "02_static_after_relax",
+    "03_freq_after_relax",
+    "04_solvation_after_relax",
+    "05_cp_after_relax"
+  ],
+  "template_only": [
+    "06_neb_template"
+  ]
+}

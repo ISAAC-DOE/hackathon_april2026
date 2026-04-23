@@ -1,0 +1,1033 @@
+{
+  "skill": {
+    "name": "vasp_input_generator",
+    "version": "6.2",
+    "description": "Generate complete VASP density functional theory input files for a single calculation step, along with an ISAAC-compliant intent record. Supports Cu, Cu-Ag, and Cu-Au (111) surface slabs with optional adsorbed molecular species. Handles relaxation, static, frequency, solvation, constant-potential, and NEB calculation modes. This skill generates inputs for ONE step at a time. Multi-step workflow orchestration is handled by a separate orchestrator skill.",
+
+    "trigger": "User or orchestrator requests VASP input files for a single calculation step on a Cu-based (111) surface slab.",
+
+    "inputs": [
+      {
+        "name": "surface_name",
+        "type": "string",
+        "required": true,
+        "description": "The surface slab to construct.",
+        "options": ["Cu111", "CuAg_interface", "CuAu_interface"]
+      },
+      {
+        "name": "adsorbate",
+        "type": "string",
+        "required": false,
+        "default": null,
+        "description": "Molecular species to adsorb on the surface. Omit or set to null for a clean slab.",
+        "options": ["CO", "CH", "CH2", "CHO", "CHOH", "CH3", "CH4", "COCO", "OCCO"]
+      },
+      {
+        "name": "calculation_mode",
+        "type": "string",
+        "required": false,
+        "default": "relax",
+        "description": "Type of VASP calculation. Each mode produces a different INCAR.",
+        "options": ["relax", "static", "freq", "solvation", "cp", "neb"]
+      },
+      {
+        "name": "interface_match_mode",
+        "type": "string",
+        "required": false,
+        "default": "strained_cu",
+        "description": "How to construct the lateral Cu-metal interface.",
+        "options": ["strained_cu", "commensurate_1d"]
+      },
+      {
+        "name": "commensurate_search_range",
+        "type": "integer",
+        "required": false,
+        "default": 15,
+        "description": "Maximum value of m and n to search when finding the optimal commensurate supercell pair."
+      },
+      {
+        "name": "commensurate_mismatch_threshold_percent",
+        "type": "number",
+        "required": false,
+        "default": 1.0,
+        "description": "Maximum acceptable residual mismatch percentage for the commensurate pair. If no pair is found below this threshold, prompt the user."
+      },
+      {
+        "name": "max_slab_atoms_warning",
+        "type": "integer",
+        "required": false,
+        "default": 500,
+        "description": "If the generated slab exceeds this atom count, warn the user about computational cost."
+      },
+      {
+        "name": "placement_region",
+        "type": "string",
+        "required": false,
+        "default": null,
+        "description": "Where on the surface to place the adsorbate. Defaults to terrace for pure Cu and interface for interface slabs.",
+        "options": ["terrace", "interface"]
+      },
+      {
+        "name": "site_mode_override",
+        "type": "string",
+        "required": false,
+        "default": null,
+        "description": "Override the default binding site type for the adsorbate.",
+        "options": ["site_auto", "top", "bridge", "hollow", "pair_cu_cu", "pair_interface_cu_cu", "pair_interface_cross"]
+      },
+      {
+        "name": "target_mu",
+        "type": "number",
+        "required": false,
+        "default": null,
+        "description": "Target chemical potential for constant-potential (cp) calculations in eV. Required when calculation_mode is cp."
+      },
+      {
+        "name": "she_work_function_eV",
+        "type": "number",
+        "required": false,
+        "default": 4.6,
+        "description": "Assumed SHE work function for converting TARGETMU to V vs SHE in ISAAC records. The conversion is U_SHE = -TARGETMU/e - she_work_function_eV."
+      },
+      {
+        "name": "reaction_context",
+        "type": "string",
+        "required": false,
+        "default": "CORR",
+        "description": "Electrochemical reaction context for ISAAC records. Appears in context.electrochemistry.reaction."
+      },
+      {
+        "name": "neb_images",
+        "type": "integer",
+        "required": false,
+        "default": 6,
+        "description": "Number of intermediate images for NEB calculations. Typical range is 4-8 for surface reactions.",
+        "valid_range": [3, 12]
+      },
+      {
+        "name": "neb_reaction_equation",
+        "type": "string",
+        "required": false,
+        "default": null,
+        "description": "Reaction equation for NEB ISAAC records, e.g., 'CO* + CO* -> OCCO*'. Appears in computation.transition_state.reaction."
+      },
+      {
+        "name": "neb_electrons_transferred",
+        "type": "integer",
+        "required": false,
+        "default": 0,
+        "description": "Number of electrons transferred in the NEB reaction step. 0 for chemical steps, 1+ for PCET steps."
+      },
+      {
+        "name": "parent_contcar_path",
+        "type": "string",
+        "required": false,
+        "default": null,
+        "description": "Path to a CONTCAR from a completed parent step. Used as the starting geometry for freq, solvation, static, cp, and NEB steps. When provided, this file is copied to POSCAR instead of generating a new slab."
+      },
+      {
+        "name": "product_contcar_path",
+        "type": "string",
+        "required": false,
+        "default": null,
+        "description": "Path to a CONTCAR for the product endpoint. Required only for NEB calculations. The reactant geometry comes from parent_contcar_path."
+      },
+      {
+        "name": "use_custodian",
+        "type": "boolean",
+        "required": false,
+        "default": true,
+        "description": "Whether to wrap VASP execution with Custodian for automatic error recovery."
+      },
+      {
+        "name": "output_directory",
+        "type": "string",
+        "required": false,
+        "default": "./vasp_inputs",
+        "description": "Directory for generated output files."
+      }
+    ],
+
+    "outputs": [
+      {
+        "name": "POSCAR",
+        "format": "VASP 5, direct coordinates",
+        "description": "Atomic structure file. When parent_contcar_path is provided, the CONTCAR is copied as POSCAR. For NEB, endpoint POSCARs are placed in image directories and intermediate images are interpolated."
+      },
+      {
+        "name": "INCAR",
+        "format": "VASP INCAR text",
+        "description": "Calculation parameters determined by calculation_mode."
+      },
+      {
+        "name": "KPOINTS",
+        "format": "VASP KPOINTS text",
+        "description": "Monkhorst-Pack k-point grid."
+      },
+      {
+        "name": "POTCAR",
+        "format": "Placeholder text file",
+        "description": "Reminder to supply licensed PAW pseudopotentials. Species order must match POSCAR."
+      },
+      {
+        "name": "submit.sh",
+        "format": "SLURM batch script",
+        "description": "Job submission script. Calls run_custodian.py when Custodian is enabled, or srun directly when disabled."
+      },
+      {
+        "name": "run_custodian.py",
+        "format": "Python script",
+        "description": "Custodian wrapper for automatic error recovery. Only generated when use_custodian is true.",
+        "conditional": "use_custodian == true"
+      },
+      {
+        "name": "metadata.json",
+        "format": "JSON",
+        "description": "Records all parameters including commensurate pair, detected boundary, bridge pair elements, site coordinates, atom count, and k-point mesh."
+      },
+      {
+        "name": "isaac_intent_record.json",
+        "format": "JSON",
+        "description": "ISAAC v1.05 compliant intent record generated at input creation time."
+      }
+    ],
+
+    "constraints": {
+
+      "slab_construction": {
+        "crystal_structure": "FCC",
+        "surface_orientation": [1, 1, 1],
+        "lattice_constants_angstrom": {
+          "Cu": 3.615,
+          "Ag": 4.086,
+          "Au": 4.078
+        },
+        "slab_layers": 4,
+        "vacuum_above_angstrom": 15.0,
+        "vacuum_below_angstrom": 0.0,
+        "pure_cu_supercell": [4, 3],
+        "fixed_bottom_layers": {
+          "pure_cu": 2,
+          "interface": 1
+        },
+        "periodic_boundary_conditions": [true, true, true],
+        "layer_stacking": "FCC(111) ABC stacking. Each successive layer has a lateral offset consistent with the close-packed stacking sequence.",
+        "layer_alignment": "For interface slabs, ALL layers of both metals must be at identical z-coordinates. Both metals use the same interlayer spacing (from the non-Cu metal). The bottom layer of both metals is at z = 0. This ensures no unphysical step at the interface boundary."
+      },
+
+      "interface_construction": {
+        "two_directions": {
+          "perpendicular_to_interface": {
+            "cell_vector": "a",
+            "description": "Short direction crossing from Cu into the other metal.",
+            "repeats_per_side": 4,
+            "matching": "NO commensurate matching. Both metals have exactly 4 repeats along a. The total number of unique x-positions per metal per layer is determined by this value and the FCC(111) sublattice structure.",
+            "critical_rule": "Each metal has EXACTLY repeats_per_side (default 4) unit cell repeats along cell vector a. Do NOT double this value. Do NOT confuse the number of sublattice rows with the number of unit cell repeats."
+          },
+          "parallel_to_interface": {
+            "cell_vector": "b",
+            "description": "Long direction running ALONG the interface boundary line.",
+            "matching": "The commensurate (m:n) matching is applied HERE. Cu has m repeats and the other metal has n repeats, both strained to a common length along b."
+          }
+        },
+
+        "z_direction": {
+          "description": "Both metals must use the SAME interlayer spacing in the z-direction. All layers of both metals are at IDENTICAL z-coordinates.",
+          "rationale": "The two metals share a coherent slab. If they had different z-coordinates at any layer, there would be an unphysical step at the interface boundary. The z-structure must be continuous across the boundary.",
+          "implementation": "Use a single interlayer spacing for both metals, computed from the non-Cu metal's lattice constant. This is consistent with the strained_cu mode where Cu is strained to match the other metal.",
+          "interlayer_spacing_rule": "d_111 = a_fcc_other / sqrt(3). Both Cu and the other metal use this same spacing.",
+          "layer_z_coordinates": "All four layers are at z = 0, z = d_111, z = 2*d_111, z = 3*d_111 in Cartesian. In fractional coordinates, divide by the c-vector length.",
+          "critical_rule": "Cu and the other metal layers must be at IDENTICAL z-coordinates. There must be NO z-offset between the two metals at any layer. The bottom layer of BOTH metals is at z = 0."
+        },
+
+        "interface_boundary": "A line running along cell vector b at approximately x = 0.5 along cell vector a.",
+        "critical_rule": "The commensurate m:n matching is ALWAYS applied along cell vector b (parallel to interface), NEVER along cell vector a (perpendicular).",
+
+        "strained_cu_mode": {
+          "description": "Both sides use the non-Cu lattice constant in all directions. Cu is strained.",
+          "repeats_perpendicular": 4,
+          "repeats_parallel": 3,
+          "z_spacing": "Both metals use d_111 = a_fcc_other / sqrt(3)."
+        },
+
+        "commensurate_1d_mode": {
+          "description": "Optimal supercell pairing along cell vector b. Both metals slightly strained to a common length along b. Perpendicular direction uses the non-Cu lattice constant for both metals.",
+          "cell_vector_assignment": {
+            "a_vector": {
+              "direction": "Perpendicular to interface.",
+              "length": "Determined by repeats_per_side (default 4) times the non-Cu metal's surface lattice spacing. Both metals use the SAME a-vector length."
+            },
+            "b_vector": {
+              "direction": "Parallel to interface (ALONG the boundary).",
+              "length": "Common length from commensurate matching. Cu has m repeats, other metal has n repeats."
+            },
+            "c_vector": {
+              "direction": "Surface normal.",
+              "length": "Slab thickness (4 layers times interlayer spacing) plus vacuum."
+            }
+          },
+          "pair_finding_algorithm": [
+            "Compute a_surface = a_fcc / sqrt(2) for each metal.",
+            "Search (m, n) from 1 to commensurate_search_range.",
+            "Compute L_Cu = m * a_surface_Cu, L_other = n * a_surface_other.",
+            "Compute mismatch = |L_Cu - L_other| / ((L_Cu + L_other) / 2) * 100%.",
+            "Select pair with smallest mismatch below threshold.",
+            "If none below threshold, report best pair to user.",
+            "If slab exceeds max_slab_atoms_warning, warn user.",
+            "Apply (m, n) to cell vector b."
+          ],
+          "repeats_perpendicular_default": 4,
+          "atom_count_formula": {
+            "description": "Expected total atom count for validation.",
+            "cu_atoms": "repeats_perpendicular * m * slab_layers",
+            "other_atoms": "repeats_perpendicular * n * slab_layers",
+            "total_slab": "cu_atoms + other_atoms",
+            "total_with_adsorbate": "total_slab + number_of_adsorbate_atoms",
+            "example_CuAg_4_9_8": "Cu: 4*9*4 = 144, Ag: 4*8*4 = 128, total slab = 272, with CHO = 275"
+          }
+        },
+
+        "metadata_requirements": [
+          "Commensurate pair (m, n).",
+          "Cell vector b is the matched direction.",
+          "Residual mismatch percentage.",
+          "Common supercell length along b.",
+          "Strain on each side.",
+          "Total atom count.",
+          "Interface boundary location.",
+          "Interlayer spacing used (same for both metals).",
+          "Repeats per side along a.",
+          "Confirmation that all layers have identical z-coordinates for both metals."
+        ],
+
+        "validation_checks": [
+          {
+            "check": "Count unique x-positions per metal in the top layer. Must equal repeats_per_side times the sublattice multiplier (typically 2 for FCC(111) with alternating rows).",
+            "on_failure": "The perpendicular repeat count is wrong. Rebuild."
+          },
+          {
+            "check": "For each layer index, all Cu atoms and all other-metal atoms at that layer must have the same z-coordinate.",
+            "on_failure": "The z-alignment is broken. Rebuild with shared interlayer spacing."
+          },
+          {
+            "check": "The bottom layer of both metals must be at z = 0 (or the same z-coordinate).",
+            "on_failure": "One metal is offset vertically. Rebuild."
+          },
+          {
+            "check": "Total atom count matches the formula: (repeats_perp * m + repeats_perp * n) * slab_layers + adsorbate_atoms.",
+            "on_failure": "Atom count mismatch. Check repeat counts."
+          }
+        ]
+      },
+
+      "adsorbate_geometry_general_rules": [
+        "The carbon atom is ALWAYS the atom that bonds to the surface metal atoms. C is the lowest adsorbate atom (closest to the surface). All other adsorbate atoms (O, H) are ABOVE C, pointing away from the surface. No O or H atom may have a z-coordinate lower than C.",
+        "NO adsorbate with sp2 or sp3 hybridized carbon has a perfectly vertical C-O or C-H bond. All bonds from the anchor carbon are tilted away from the surface normal by the appropriate bond angle.",
+        "For sp3 carbon (CHO, CHOH, CH3, CH4): all bonds from C are at tetrahedral angles (109.5 degrees) from each other. The C sits at the center of a tetrahedron with the surface bond as one vertex.",
+        "For sp2 carbon (CH2, OCCO): bonds from C are at trigonal angles (120 degrees) from each other.",
+        "For linear species (CO, CH): the bond is vertical along the surface normal. These are the ONLY species with vertical bonds.",
+        "H atoms bonded to C or O must ALWAYS have a z-coordinate HIGHER than or equal to the atom they are bonded to. H atoms NEVER point into the surface.",
+        "O atoms bonded to C in CHO, CHOH, and OCCO are tilted away from vertical. The C-O bond makes an angle with the surface normal determined by the hybridization geometry.",
+        "The z-offset of a bonded atom above its parent is: bond_length multiplied by cos(180 degrees minus bond_angle).",
+        "The lateral offset of a bonded atom from its parent is: bond_length multiplied by sin(180 degrees minus bond_angle).",
+        "For bridge-site adsorbates, the molecular backbone must be oriented relative to the metal-metal pair vector.",
+        "For any adsorbate with 3 or more non-hydrogen atoms, the atoms must NOT all be coplanar at the same z-coordinate unless the molecule is genuinely linear (CO only)."
+      ],
+
+      "adsorbate_site_assignments": {
+        "CO": {
+          "default_site": "hollow",
+          "anchor_height_angstrom": 1.30,
+          "geometry_rules": [
+            "C is the anchor atom that bonds to the surface, placed at the hollow site.",
+            "O is directly above C along the surface normal.",
+            "C-O bond is vertical (linear molecule).",
+            "C is the lowest adsorbate atom."
+          ],
+          "bond_lengths": {"C-O": 1.16},
+          "element_order_in_POSCAR": ["C", "O"]
+        },
+        "CH": {
+          "default_site": "hollow",
+          "anchor_height_angstrom": 1.30,
+          "geometry_rules": [
+            "C is the anchor atom that bonds to the surface, placed at the hollow site.",
+            "H is directly above C along the surface normal.",
+            "C-H bond is vertical (linear molecule).",
+            "C is the lowest adsorbate atom."
+          ],
+          "bond_lengths": {"C-H": 1.09},
+          "element_order_in_POSCAR": ["C", "H"]
+        },
+        "CH2": {
+          "default_site": "hollow",
+          "anchor_height_angstrom": 1.30,
+          "geometry_rules": [
+            "C is the anchor atom that bonds to the surface, placed at the hollow site.",
+            "Two H atoms are bonded to C at trigonal angles (120 degrees).",
+            "Both H atoms are ABOVE C (higher z-coordinate).",
+            "The two H atoms are symmetric about the surface normal through C.",
+            "C is the lowest adsorbate atom."
+          ],
+          "bond_lengths": {"C-H": 1.09},
+          "element_order_in_POSCAR": ["C", "H"]
+        },
+        "CHO": {
+          "default_site": "bridge",
+          "anchor_height_angstrom": 1.50,
+          "geometry_rules": [
+            "C is the anchor atom that BONDS to the surface. C is placed at bridge height (1.50 A) above the MIDPOINT of two metal atoms. C is the LOWEST adsorbate atom (closest to the surface).",
+            "C must be directly above the midpoint of the two bridge metal atoms. It must NOT be directly above a single metal atom (that would be atop, not bridge).",
+            "C-O bond is TILTED away from the surface normal. O is NOT directly above C.",
+            "O has a HIGHER z-coordinate than C AND a lateral offset from C.",
+            "H is bonded to C at a tetrahedral angle (109.5 degrees) from the C-O bond.",
+            "H has a HIGHER z-coordinate than C. H NEVER points into the surface.",
+            "H points OUT OF the plane defined by the surface normal and the C-O bond vector.",
+            "The O-C-H angle is approximately 109.5 degrees.",
+            "O, C, and H must NOT all be collinear."
+          ],
+          "bond_lengths": {"C-O": 1.16, "C-H": 1.09},
+          "element_order_in_POSCAR": ["C", "O", "H"]
+        },
+        "CHOH": {
+          "default_site": "atop",
+          "anchor_height_angstrom": 1.85,
+          "geometry_rules": [
+            "C is the anchor atom that bonds to the surface, placed atop a surface Cu atom. C is the lowest adsorbate atom.",
+            "C-O bond is TILTED away from the surface normal. O is NOT directly above C.",
+            "O has a HIGHER z-coordinate than C AND a lateral offset from C.",
+            "H bonded to C (H_C) points OUT OF the plane defined by the surface normal and the C-O bond vector. H_C has a different y-coordinate than C and O.",
+            "H bonded to O (H_O) extends from O at a tetrahedral angle relative to the C-O bond direction.",
+            "Both H atoms have z-coordinates HIGHER than C.",
+            "The four atoms C, O, H_C, H_O must NOT all lie in the same plane.",
+            "The O-C-H_C angle is approximately 109.5 degrees.",
+            "The C-O-H_O angle is approximately 109.5 degrees."
+          ],
+          "bond_lengths": {"C-O": 1.43, "C-H": 1.09, "O-H": 0.97},
+          "bond_length_note": "C-O is a single bond (1.43 angstrom), not a double bond.",
+          "element_order_in_POSCAR": ["C", "O", "H"]
+        },
+        "CH3": {
+          "default_site": "atop",
+          "anchor_height_angstrom": 1.85,
+          "geometry_rules": [
+            "C is the anchor atom that bonds to the surface, placed atop a surface Cu atom. C is the lowest adsorbate atom.",
+            "Three H atoms are bonded to C at tetrahedral angles (109.5 degrees).",
+            "All three H atoms are ABOVE C (higher z-coordinate).",
+            "The three H atoms are arranged in a symmetric tripod, separated by 120 degrees in azimuth."
+          ],
+          "bond_lengths": {"C-H": 1.09},
+          "element_order_in_POSCAR": ["C", "H"]
+        },
+        "CH4": {
+          "default_site": "atop",
+          "anchor_height_angstrom": 1.85,
+          "geometry_rules": [
+            "C is the anchor atom that bonds to the surface, placed atop a surface Cu atom. C is the lowest adsorbate atom.",
+            "Four H atoms in tetrahedral arrangement around C.",
+            "One H points straight up (highest z). Three H atoms form a symmetric tripod below it.",
+            "The three lower H atoms still have z-coordinates HIGHER than C.",
+            "All H-C-H angles are 109.5 degrees."
+          ],
+          "bond_lengths": {"C-H": 1.09},
+          "element_order_in_POSCAR": ["C", "H"]
+        },
+        "COCO": {
+          "default_site": "two_adjacent_hollows",
+          "adjacency_rule": "The two hollow sites must share exactly two vertex atoms in their Delaunay triangles. This ensures they are nearest-neighbor hollows. The C-C distance should be approximately equal to the surface lattice spacing (a_fcc / sqrt(2)) — about 2.56 A for Cu or 2.89 A for Ag.",
+          "distance_check": "After placement, verify the C-C distance is between 2.0 and 3.5 A. If larger, the hollows are not adjacent.",
+          "anchor_height_angstrom": 1.30,
+          "geometry_rules": [
+            "Two separate CO molecules, each placed on a hollow site. C bonds to the surface in each.",
+            "The two hollow sites must be adjacent, sharing exactly two vertex atoms in their Delaunay triangles.",
+            "Each CO is vertical: C at hollow height, O directly above.",
+            "The two CO molecules are independent — no C-C bond.",
+            "C is the lowest atom in each CO molecule."
+          ],
+          "bond_lengths": {"C-O": 1.16},
+          "element_order_in_POSCAR": ["C", "O"]
+        },
+        "OCCO": {
+          "default_site": "bridge_pair",
+          "anchor_height_angstrom": 1.50,
+          "geometry_rules": [
+            "OCCO is an O-C-C-O dimer with a central C-C bond.",
+            "Both C atoms bond to the surface. The C-C bond axis lies PARALLEL to the surface, bridging two adjacent metal atoms.",
+            "The C-C bond is oriented along the metal-metal pair vector.",
+            "Each O is bonded to one C and tilts UPWARD away from the surface.",
+            "The O atoms are at a HIGHER z-coordinate than the C atoms.",
+            "The O-C-C angle is approximately 120 degrees (trigonal, NOT linear).",
+            "The molecule is NOT flat. O and C are at DIFFERENT z-coordinates.",
+            "The two C atoms share the same z-coordinate (at the anchor height above the bridge site).",
+            "The two O atoms share the same z-coordinate (higher than C).",
+            "C atoms are the lowest adsorbate atoms."
+          ],
+          "bond_lengths": {"C-C": 1.40, "C-O": 1.16},
+          "element_order_in_POSCAR": ["O", "C"],
+          "element_order_note": "O is listed BEFORE C in POSCAR. This is the opposite of most other adsorbates. The POTCAR must be constructed in the same order."
+        }
+      },
+
+      "adsorbate_placement_rules": {
+        "anchor_atom": "The carbon atom is the anchor for all species. It is the atom that bonds to the surface metal atoms. C is placed at the specified height above the surface site and is always the LOWEST (closest to surface) atom in the adsorbate. All other atoms (O, H) are above C.",
+
+        "terrace_placement": {
+          "description": "Place the adsorbate in the middle of the Cu terrace, away from any interface boundary or cell edge.",
+          "site_ranking_metric": "Distance from the candidate site to the cell center. Choose the site closest to the cell center.",
+          "default_for": "Pure Cu slabs."
+        },
+
+        "interface_placement": {
+          "description": "Place the adsorbate at the boundary between the two metals, on the Cu side or on a cross-boundary site.",
+          "default_for": "Interface slabs (CuAg, CuAu).",
+
+          "finding_the_boundary": [
+            "Identify all top-layer surface atoms (atoms at the maximum z-coordinate layer, within a tolerance of half the interlayer spacing).",
+            "Group top-layer atoms by chemical element.",
+            "Along cell vector a (perpendicular to interface), find adjacent atoms of different elements. The midpoint between each such pair defines a local boundary point.",
+            "The set of all such midpoints defines the interface boundary.",
+            "The boundary runs along cell vector b (parallel to interface).",
+            "Due to periodic boundary conditions, there may be two boundaries. Use the one near the middle of the cell along a."
+          ],
+
+          "site_ranking_metric": "Distance from the candidate site to the nearest detected boundary point. Choose the site closest to the boundary.",
+
+          "site_selection": {
+            "atop": "Among all top-layer Cu atoms, choose the one closest to any boundary point. Must be a Cu atom, not Ag or Au.",
+            "bridge": "Use the bridge_placement_procedure below.",
+            "hollow": "Among all Delaunay triangles of top-layer atoms, choose the triangle whose centroid is closest to any boundary point. Include both Cu and non-Cu atoms in the candidate set. Prefer triangles containing at least one Cu atom."
+          },
+
+          "bridge_placement_procedure": [
+            "1. Identify all top-layer atoms at the maximum z-coordinate.",
+            "2. Detect the interface boundary by finding adjacent atoms of different elements along cell vector a.",
+            "3. Find ALL nearest-neighbor pairs of top-layer atoms. A nearest-neighbor pair has a distance approximately equal to the surface lattice spacing (a_fcc/sqrt(2)), typically 2.5-3.0 A.",
+            "4. For each pair, compute the midpoint.",
+            "5. Classify pairs into: (a) cross-boundary pairs (one Cu, one non-Cu), (b) Cu-Cu pairs near boundary, (c) non-Cu pairs.",
+            "6. FIRST CHOICE: Among cross-boundary pairs, select the one whose midpoint is closest to the boundary.",
+            "7. SECOND CHOICE: If no cross-boundary pairs exist, select the Cu-Cu pair whose midpoint is closest to the boundary.",
+            "8. NEVER select a non-Cu pair (Ag-Ag or Au-Au). The adsorbate must bond to at least one Cu atom.",
+            "9. Place the C anchor at the bridge height (1.50 A for CHO, 1.50 A for OCCO) above the selected midpoint.",
+            "10. VERIFY: The C anchor must be within 2 surface lattice spacings of the detected boundary. If C is deep in the non-Cu terrace, reject and re-select.",
+            "11. Orient the adsorbate molecular geometry relative to the pair vector (the vector connecting the two bridge atoms)."
+          ],
+
+          "bridge_preference": "When placing a bridge-site adsorbate at the interface, PREFER cross-boundary pairs (one Cu atom and one non-Cu atom) over same-element pairs. The adsorbate C atom must bond to at least one Cu atom. Report in metadata which two atoms form the bridge and whether the pair crosses the element boundary.",
+
+          "prohibited": [
+            "Do NOT use distance-to-cell-center when interface placement is requested.",
+            "Do NOT assume the boundary is at any fixed fractional coordinate.",
+            "Do NOT place the adsorbate deep in any terrace far from the boundary.",
+            "Do NOT place bridge adsorbates on a single atom (that is atop, not bridge).",
+            "Do NOT place adsorbates on non-Cu pairs (Ag-Ag or Au-Au). C must bond to at least one Cu."
+          ]
+        },
+
+        "pair_adsorbate_placement": {
+          "COCO": "Place two CO molecules on two adjacent hollow sites. The two hollow sites must share exactly two vertex atoms in their Delaunay triangles. Verify C-C distance is between 2.0 and 3.5 A. Prefer sites near the interface boundary for interface placement, or near the cell center for terrace placement.",
+          "OCCO": "Place the C-C bonded pair over a bridge between two metal atoms, oriented along the pair vector, with O atoms tilted upward. Use the bridge_placement_procedure above. Both C atoms must bond to surface metal atoms."
+        }
+      },
+      "vasp_parameters": {
+        "relax_mode": {
+          "ISPIN": 2,
+          "PREC": "Accurate",
+          "ENCUT": 400,
+          "EDIFF": 1e-5,
+          "EDIFFG": -0.02,
+          "NELM": 120,
+          "ALGO": "Normal",
+          "GGA": "PE",
+          "IVDW": 11,
+          "LASPH": true,
+          "IBRION": 2,
+          "NSW": 300,
+          "ISIF": 2,
+          "ISMEAR": 1,
+          "SIGMA": 0.2,
+          "LREAL": "Auto",
+          "ISYM": 0,
+          "ICHARG": 2,
+          "LMAXMIX": 4,
+          "LWAVE": false,
+          "LCHARG": false,
+          "LDIPOL": true,
+          "IDIPOL": 3
+        },
+        "static_mode": {
+          "description": "Start from relax_mode, apply these overrides.",
+          "overrides": {
+            "EDIFF": 1e-6,
+            "IBRION": -1,
+            "NSW": 0,
+            "ISMEAR": 0,
+            "SIGMA": 0.05,
+            "ICHARG": 0,
+            "LWAVE": true,
+            "LCHARG": true
+          },
+          "remove_tags": ["EDIFFG"]
+        },
+        "freq_mode": {
+          "description": "Start from relax_mode, apply these overrides.",
+          "overrides": {
+            "IBRION": 5,
+            "NSW": 1,
+            "NFREE": 2,
+            "POTIM": 0.015,
+            "EDIFF": 1e-7
+          },
+          "remove_tags": ["EDIFFG"],
+          "notes": "Only adsorbate atoms should be unfrozen for selective dynamics. All slab atoms should be frozen."
+        },
+        "solvation_mode": {
+          "description": "Start from relax_mode, add solvation tags.",
+          "additions": {
+            "LSOL": true,
+            "EB_K": 78.4,
+            "TAU": 0.000525,
+            "LAMBDA_D_K": 3.0
+          },
+          "notes": "Re-relaxes geometry in implicit solvent. Compare total energy to vacuum relaxation for solvation correction."
+        },
+        "cp_mode": {
+          "description": "Start from relax_mode, add solvation and constant-potential tags.",
+          "additions": {
+            "LSOL": true,
+            "EB_K": 78.4,
+            "LCEP": true,
+            "NESCHEME": 3,
+            "FERMICONVERGE": 0.05,
+            "TARGETMU": "Must be set by user via target_mu input. If not provided, write a comment placeholder: # TARGETMU = <set_this>"
+          }
+        },
+        "neb_mode": {
+          "description": "Start from relax_mode, apply NEB-specific overrides.",
+          "overrides": {
+            "IBRION": 3,
+            "POTIM": 0,
+            "IOPT": 1,
+            "ICHAIN": 0,
+            "SPRING": -5,
+            "LCLIMB": true,
+            "NSW": 500,
+            "EDIFFG": -0.05
+          },
+          "dynamic_tags": {
+            "IMAGES": "Set to the value of neb_images input."
+          },
+          "requires": "VTST Tools compiled into VASP.",
+          "notes": "The VASP command in submit.sh must use the NEB-parallel executable or appropriate srun configuration for multiple images."
+        }
+      },
+
+      "kpoint_sampling": {
+        "method": "Monkhorst-Pack",
+        "pure_cu_grid": [5, 3, 1],
+        "interface_grid": [1, 1, 1],
+        "selection_rule": "Use the pure Cu grid for Cu111 slabs. Use the interface grid for all interface slabs regardless of match mode."
+      },
+
+      "nersc_job_script": {
+        "queue": "regular",
+        "account": "mxxxx",
+        "nodes": 2,
+        "constraint": "cpu",
+        "walltime": "8:00:00",
+        "vasp_module": "vasp/6.4.3-cpu",
+        "mpi_tasks": 128,
+        "cpus_per_task": 4,
+        "omp_num_threads": 2,
+        "omp_places": "threads",
+        "omp_proc_bind": "spread",
+        "direct_srun_command": "srun -n 128 -c 4 --cpu-bind=cores vasp_std",
+        "custodian_command": "python run_custodian.py",
+        "execution_rule": "When use_custodian is true, submit.sh calls custodian_command. When false, it calls direct_srun_command.",
+        "neb_note": "For NEB calculations, the number of nodes should be a multiple of the number of images, and the VASP command may need adjustment for image-parallel execution.",
+        "mail_type": "ALL",
+        "mail_user": "user@example.com"
+      },
+
+      "output_organization": {
+        "structure": "One directory per calculation step.",
+        "naming_convention": "{surface_name}_{adsorbate}_{calculation_mode}",
+        "required_files_without_custodian": ["POSCAR", "INCAR", "KPOINTS", "POTCAR", "submit.sh", "metadata.json", "isaac_intent_record.json"],
+        "required_files_with_custodian": ["POSCAR", "INCAR", "KPOINTS", "POTCAR", "submit.sh", "run_custodian.py", "metadata.json", "isaac_intent_record.json"],
+        "neb_directory_structure": "For NEB, create subdirectories 00 through {neb_images+1}. Place reactant POSCAR in 00/ and product POSCAR in the last directory. Interpolated images go in directories 01 through {neb_images}."
+      },
+
+      "poscar_element_ordering": {
+        "general_rule": "Elements in POSCAR must appear as contiguous blocks. Metal atoms are listed first (Cu, then Ag or Au if present), followed by adsorbate atoms in the order specified by the element_order_in_POSCAR field for each species.",
+        "critical_note": "The POTCAR must be constructed in the same element order as the POSCAR. For OCCO, O appears before C, which is the reverse of most other adsorbates."
+      },
+
+      "geometry_source_rules": {
+        "relax": "Generate a new slab with adsorbate from scratch. Ignore parent_contcar_path.",
+        "static": "Use parent_contcar_path as POSCAR. Do not generate a new slab.",
+        "freq": "Use parent_contcar_path as POSCAR. Do not generate a new slab. Freeze all slab atoms; only adsorbate atoms should be unfrozen.",
+        "solvation": "Use parent_contcar_path as POSCAR. Do not generate a new slab.",
+        "cp": "Use parent_contcar_path as POSCAR if provided. If not provided, generate a new slab (for direct CP relaxation from scratch).",
+        "neb": "Use parent_contcar_path as reactant endpoint and product_contcar_path as product endpoint. Both are required. Interpolate intermediate images."
+      },
+
+      "file_generation_procedure": [
+        "1. Generate POSCAR from slab construction + adsorbate placement (or copy from parent_contcar_path for downstream steps).",
+        "2. Generate INCAR from vasp_parameters for the calculation_mode.",
+        "3. Generate KPOINTS from kpoint_sampling.",
+        "4. Generate POTCAR placeholder.",
+        "5. Generate submit.sh from nersc_job_script.",
+        "6. Generate run_custodian.py if use_custodian is true.",
+        "7. Generate metadata.json with all construction parameters, site coordinates, boundary detection results, and commensurate pair info.",
+        "8. Generate isaac_intent_record.json using the intent_record_template in isaac_record_generation. Populate all fields from the current inputs and generated parameters. Compute SHA-256 hashes for all asset files.",
+        "9. Verify all required_files are present in output_directory."
+      ],
+
+      "isaac_record_generation": {
+        "description": "The input generator produces an ISAAC v1.05 intent record for each calculation step at input creation time.",
+        "record_version": "1.05",
+
+        "record_id_generation": {
+          "method": "ULID with semantic suffix",
+          "format": "{ULID}_{record_type}_{surface}_{adsorbate}_{step}",
+          "note": "The ULID prefix is shared between intent and evidence for the same step, making linking trivial."
+        },
+
+        "intent_record_template": {
+          "isaac_record_version": "1.05",
+          "record_type": "intent",
+          "record_domain": "simulation",
+          "source_type": "computation",
+
+          "timestamps": {
+            "created_utc": "Generated at input creation time."
+          },
+
+          "sample": {
+            "construction_rules": {
+              "material.name": {
+                "pure_cu_clean": "Cu(111) slab, clean",
+                "pure_cu_adsorbate": "Cu(111) slab with {adsorbate} adsorbate",
+                "interface_clean": "Cu-{Metal}(111) interface slab, clean",
+                "interface_adsorbate": "Cu-{Metal}(111) interface slab with {adsorbate} adsorbate"
+              },
+              "material.formula": {
+                "Cu111": "Cu",
+                "CuAg_interface": "CuAg",
+                "CuAu_interface": "CuAu"
+              },
+              "material.provenance": "theoretical",
+              "sample_form": "slab_model"
+            }
+          },
+
+          "system": {
+            "domain": "computational",
+            "technique": "DFT",
+            "instrument": {
+              "instrument_type": "simulation_engine",
+              "instrument_name": "VASP_Standard",
+              "vendor_or_project": "VASP"
+            },
+            "configuration": {
+              "code_version": "6.4.3",
+              "compute_architecture": "CPU"
+            }
+          },
+
+          "context": {
+            "construction_rules": {
+              "environment": "in_silico",
+              "temperature_K": 0,
+              "electrochemistry": {
+                "always_include": {
+                  "reaction": "From reaction_context input (default CORR)."
+                },
+                "cp_mode_only": {
+                  "potential_setpoint_V": "Computed from target_mu: U_SHE = -TARGETMU/e - she_work_function_eV.",
+                  "potential_scale": "SHE"
+                }
+              },
+              "simulation_assumptions": {
+                "solvation_and_cp_modes": {
+                  "solvation_model": "implicit"
+                }
+              }
+            }
+          },
+
+          "computation": {
+            "method": {
+              "mapping_from_vasp_parameters": {
+                "family": "DFT",
+                "functional_class": "GGA",
+                "functional_name": "PBE",
+                "basis_type": "planewave",
+                "pseudopotential": "PAW",
+                "cutoff_eV": "From ENCUT",
+                "spin_treatment": "collinear",
+                "dispersion": "D3",
+                "kpoints": "From KPOINTS file, formatted as '{k1}x{k2}x{k3} Monkhorst-Pack'",
+                "smearing": {
+                  "method": "Methfessel-Paxton",
+                  "width_eV": "From SIGMA"
+                },
+                "convergence": {
+                  "energy_eV": "From EDIFF",
+                  "force_eV_per_A": "From abs(EDIFFG) when EDIFFG < 0"
+                }
+              }
+            },
+
+            "slab_model": {
+              "mapping": {
+                "surface_facet": "111",
+                "supercell": "From pure_cu_supercell or interface construction parameters",
+                "layers": "From slab_layers",
+                "fixed_layers": "From fixed_bottom_layers",
+                "vacuum_A": "From vacuum_above_angstrom",
+                "lattice_constant_A": "From lattice_constants_angstrom for the relevant metal",
+                "dipole_correction": "From LDIPOL"
+              }
+            },
+
+            "potential_method": {
+              "construction_rules": {
+                "relax": {"type": "vacuum"},
+                "static": {"type": "vacuum"},
+                "freq": {"type": "vacuum"},
+                "solvation": {
+                  "type": "implicit_solvent_PZC",
+                  "solvent_model": "VASPsol",
+                  "dielectric_constant": 78.4
+                },
+                "cp": {
+                  "type": "grand_canonical",
+                  "target_potential_V_SHE": "Computed from target_mu",
+                  "SHE_work_function_eV": "From she_work_function_eV input",
+                  "solvent_model": "VASPsol",
+                  "dielectric_constant": 78.4
+                },
+                "neb": {"type": "vacuum"}
+              }
+            },
+
+            "output_quantity": {
+              "construction_rules": {
+                "relax": {
+                  "quantity": "E_DFT",
+                  "corrections_applied": {"zero_point_energy": false, "entropy": false, "thermal": false, "solvation": false, "dispersion": true, "grand_canonical": false, "PCET": false}
+                },
+                "static": {
+                  "quantity": "E_DFT",
+                  "corrections_applied": {"zero_point_energy": false, "entropy": false, "thermal": false, "solvation": false, "dispersion": true, "grand_canonical": false, "PCET": false}
+                },
+                "freq": {
+                  "quantity": "E_DFT",
+                  "corrections_applied": {"zero_point_energy": false, "entropy": false, "thermal": false, "solvation": false, "dispersion": true, "grand_canonical": false, "PCET": false}
+                },
+                "solvation": {
+                  "quantity": "E_DFT",
+                  "corrections_applied": {"zero_point_energy": false, "entropy": false, "thermal": false, "solvation": true, "dispersion": true, "grand_canonical": false, "PCET": false}
+                },
+                "cp": {
+                  "quantity": "E_DFT",
+                  "corrections_applied": {"zero_point_energy": false, "entropy": false, "thermal": false, "solvation": true, "dispersion": true, "grand_canonical": true, "PCET": false}
+                },
+                "neb": {
+                  "quantity": "activation_energy_raw",
+                  "corrections_applied": {"zero_point_energy": false, "entropy": false, "thermal": false, "solvation": false, "dispersion": true, "grand_canonical": false, "PCET": false}
+                }
+              }
+            },
+
+            "transition_state": {
+              "construction_rules": {
+                "neb_only": {
+                  "method": "CI-NEB",
+                  "images": "From neb_images input",
+                  "reaction": "From neb_reaction_equation input",
+                  "n_electrons_transferred": "From neb_electrons_transferred input"
+                },
+                "other_modes": "Omit transition_state block entirely."
+              }
+            }
+          },
+
+          "assets": {
+            "intent_assets": [
+              {
+                "asset_id": "vasp_incar",
+                "content_role": "workflow_recipe",
+                "uri": "repo://{output_directory}/INCAR",
+                "media_type": "text/plain"
+              },
+              {
+                "asset_id": "vasp_poscar",
+                "content_role": "workflow_recipe",
+                "uri": "repo://{output_directory}/POSCAR",
+                "media_type": "text/plain"
+              },
+              {
+                "asset_id": "vasp_kpoints",
+                "content_role": "workflow_recipe",
+                "uri": "repo://{output_directory}/KPOINTS",
+                "media_type": "text/plain"
+              },
+              {
+                "asset_id": "skill_metadata",
+                "content_role": "auxiliary_metadata",
+                "uri": "repo://{output_directory}/metadata.json",
+                "media_type": "application/json"
+              }
+            ],
+            "sha256_rule": "Compute SHA-256 hash of each file at generation time."
+          },
+
+          "links": {
+            "intent_links": "Empty list for intent records. Links are populated in evidence records by the orchestrator."
+          }
+        }
+      },
+
+      "error_recovery": {
+        "framework": "Custodian",
+        "minimum_version": "2024.1.1",
+        "description": "Custodian wraps the VASP execution with automatic error detection, correction, and restart. All corrections are logged to custodian.json for provenance tracking.",
+        "dependencies": ["custodian", "pymatgen"],
+
+        "handlers": {
+          "VaspErrorHandler": {
+            "description": "Catches ZBRENT, BRMIX, PRICEL, EDDDAV, ZPOTRF, PSSYEVX, EDDRMM, and other standard VASP errors. Applies known fixes to INCAR and restarts from CONTCAR.",
+            "common_fixes": {
+              "ZBRENT": "Switch IBRION from 2 to 1, reduce POTIM.",
+              "BRMIX": "Delete CHGCAR, switch to Kerker mixing.",
+              "EDDDAV": "Switch ALGO from Normal to All.",
+              "ZPOTRF": "Reduce POTIM, increase NELM.",
+              "PRICEL": "Set ISYM = 0.",
+              "EDDRMM": "Switch ALGO to Normal, reduce POTIM."
+            }
+          },
+          "UnconvergedErrorHandler": {
+            "description": "Detects electronic or ionic non-convergence. Increases NELM, switches ALGO, or copies CONTCAR to POSCAR for restart."
+          },
+          "WalltimeHandler": {
+            "description": "Monitors elapsed time. Writes STOPCAR before walltime limit to enable clean restart from CONTCAR.",
+            "buffer_time": "Configurable. Default is 5 minutes before walltime."
+          },
+          "FrozenJobErrorHandler": {
+            "description": "Kills jobs that produce no output for a configurable timeout period. Default timeout is 30 minutes."
+          },
+          "MeshSymmetryErrorHandler": {
+            "description": "Fixes k-point mesh symmetry issues by adjusting the mesh or disabling symmetry."
+          },
+          "NonConvergingErrorHandler": {
+            "description": "Detects oscillating SCF convergence and applies damping via AMIX, BMIX, or ALGO changes."
+          },
+          "PositiveEnergyErrorHandler": {
+            "description": "Catches unphysical positive total energies and adjusts POTIM or NELM."
+          }
+        },
+
+        "validators": {
+          "VasprunXMLValidator": {
+            "description": "Confirms vasprun.xml is complete, well-formed, and parseable."
+          },
+          "VaspFilesValidator": {
+            "description": "Confirms all expected VASP output files (OUTCAR, CONTCAR, vasprun.xml) exist and are non-empty."
+          }
+        },
+
+        "limits": {
+          "max_errors_per_job": 5,
+          "max_restarts": 3,
+          "behavior_on_max_errors": "Mark job as failed. Do not attempt further restarts. Log final state to custodian.json."
+        },
+
+        "provenance": {
+          "log_file": "custodian.json",
+          "contents": "Complete record of every error detected, correction applied, parameters changed, and restart performed."
+        }
+      },
+
+      "failure_handling": [
+        {"condition": "VASP runtime error detected in stdout or OUTCAR.", "action": "Custodian VaspErrorHandler diagnoses the error, applies the standard correction to INCAR, copies CONTCAR to POSCAR, and restarts."},
+        {"condition": "Job exceeds walltime without completing all ionic steps.", "action": "Custodian WalltimeHandler writes STOPCAR before walltime limit. On resubmission, job restarts from CONTCAR."},
+        {"condition": "Electronic convergence not reached within NELM steps.", "action": "Custodian UnconvergedErrorHandler increases NELM or switches ALGO."},
+        {"condition": "Frozen job with no output progress.", "action": "Custodian FrozenJobErrorHandler terminates the job and restarts."},
+        {"condition": "Oscillating SCF convergence detected.", "action": "Custodian NonConvergingErrorHandler applies damping."},
+        {"condition": "Positive total energy detected.", "action": "Custodian PositiveEnergyErrorHandler adjusts parameters."},
+        {"condition": "Maximum error count reached for a single job.", "action": "Mark job as permanently failed. Log final state. Do not restart."},
+        {"condition": "vasprun.xml is incomplete or unparseable after job completion.", "action": "Flag the job as failed for manual review."},
+        {"condition": "No valid binding site candidates found for the requested placement region.", "action": "Fall back to all top-layer Cu atoms. Log a warning message."},
+        {"condition": "No valid hollow-site triangles found after Delaunay triangulation.", "action": "Raise an error. Report the number of candidate atoms."},
+        {"condition": "No valid bridge pairs found.", "action": "Raise an error."},
+        {"condition": "TARGETMU not set when calculation_mode is cp.", "action": "Write a comment placeholder in INCAR. Do not fail."},
+        {"condition": "Any individual surface-adsorbate combination fails during batch generation.", "action": "Log the failure with species name and error description. Continue generating remaining combinations."},
+        {"condition": "Adsorbate atoms generated with H or O below the anchor C atom (lower z-coordinate).", "action": "Reject the geometry. Regenerate with corrected bond angles ensuring all non-anchor atoms are above C."},
+        {"condition": "Interface boundary cannot be detected (e.g., only one element in top layer).", "action": "Fall back to terrace placement. Log a warning."},
+        {"condition": "Commensurate pair search finds no pair below mismatch threshold.", "action": "Report best available pair and mismatch to user. Ask whether to proceed."},
+        {"condition": "Generated slab exceeds max_slab_atoms_warning.", "action": "Warn user about computational cost. Ask whether to proceed."},
+        {"condition": "parent_contcar_path required but not provided for downstream step.", "action": "Raise error explaining which parent step must complete first."},
+        {"condition": "product_contcar_path required for NEB but not provided.", "action": "Raise error explaining that both endpoints are needed."}
+      ],
+
+      "validation_rules": [
+        {"rule": "All input option values must be from the allowed options list.", "on_violation": "Reject with error listing valid options."},
+        {"rule": "POSCAR element blocks must be contiguous. Each element symbol appears exactly once in the species line.", "on_violation": "Re-sort atoms before writing."},
+        {"rule": "Element order in POSCAR must match the element_order_in_POSCAR specified for each adsorbate species.", "on_violation": "Re-sort adsorbate atoms to match the specified order."},
+        {"rule": "All H and O atoms in any adsorbate must have z-coordinates greater than or equal to the anchor C atom.", "on_violation": "Reject geometry and regenerate with correct bond angles."},
+        {"rule": "C must be the lowest-z adsorbate atom. No O or H atom may have a z-coordinate lower than C.", "on_violation": "Reject geometry. The adsorbate is upside down or O/H is bonding to the surface instead of C."},
+        {"rule": "For CHO, CHOH, and OCCO, the C-O bond must NOT be vertical. The O atom must have a lateral offset from C.", "on_violation": "Reject geometry and regenerate with tilted C-O bond."},
+        {"rule": "For CHOH, the four adsorbate atoms must NOT all be coplanar.", "on_violation": "Reject geometry and regenerate with H_C out of the C-O plane."},
+        {"rule": "For bridge-site adsorbates (CHO, OCCO), the C anchor must be above the midpoint of two metal atoms, not above a single metal atom.", "on_violation": "Reject. The adsorbate is on an atop site, not a bridge site. Re-place using bridge_placement_procedure."},
+        {"rule": "For bridge-site adsorbates on interface slabs, the C anchor must be within 2 surface lattice spacings of the detected interface boundary. C must bond to at least one Cu atom.", "on_violation": "Re-select bridge pair closer to boundary on Cu side."},
+        {"rule": "For interface placement, the adsorbate must be on the candidate site closest to the detected interface boundary, not the candidate site closest to the cell center.", "on_violation": "Re-rank candidate sites by distance to the boundary and select the closest one."},
+        {"rule": "The POTCAR species order must match the POSCAR species order.", "on_violation": "Reorder POTCAR or flag for manual correction."},
+        {"rule": "When calculation_mode is cp and target_mu is provided, TARGETMU must appear in INCAR with the numeric value, not as a comment.", "on_violation": "Write the value."},
+        {"rule": "When use_custodian is true, run_custodian.py must be present in the output directory.", "on_violation": "Generate the file."},
+        {"rule": "For freq mode, all slab atoms must be frozen. Only adsorbate atoms are unfrozen.", "on_violation": "Update selective dynamics flags."},
+        {"rule": "neb_images must be within valid_range [3, 12].", "on_violation": "Reject with error."},
+        {"rule": "Commensurate matching must be applied along cell vector b (parallel to interface), never along cell vector a.", "on_violation": "Reject and rebuild with correct cell vector assignment."},
+        {"rule": "For interface slabs, ALL layers of both metals must be at identical z-coordinates. Bottom layer at z=0. Same interlayer spacing for both metals.", "on_violation": "Reject and rebuild the slab."},
+        {"rule": "For commensurate_1d interface slabs, verify: (1) each metal has exactly repeats_per_side unique x-position groups in the top layer, (2) all layers have identical z-coordinates for both metals, (3) bottom layer of both metals is at z=0, (4) total atom count matches expected formula.", "on_violation": "Reject and rebuild the slab."},
+        {"rule": "ISAAC intent record validates against the ISAAC v1.05 schema.", "on_violation": "Fix and regenerate the record."}
+      ],
+
+      "dft_method_record": {
+        "description": "Structured record of the DFT methodology for provenance and reproducibility tracking.",
+        "method_type": "DFT",
+        "code": {"name": "VASP", "version": "6.4.3"},
+        "xc_functional": {"type": "GGA", "name": "PBE", "vasp_tag": "GGA = PE"},
+        "dispersion_correction": {"scheme": "DFT-D3", "vasp_tag": "IVDW = 11"},
+        "basis": {"type": "plane-wave", "energy_cutoff_eV": 400, "precision": "Accurate", "pseudopotential_type": "PAW-PBE"},
+        "spin_polarized": true,
+        "electronic_convergence": {
+          "EDIFF_eV": 1e-5,
+          "max_scf_steps": 120,
+          "algorithm": "Normal",
+          "smearing": {"method": "Methfessel-Paxton", "order": 1, "sigma_eV": 0.2}
+        },
+        "ionic_relaxation": {
+          "method": "conjugate-gradient",
+          "IBRION": 2,
+          "max_ionic_steps": 300,
+          "cell_degrees_of_freedom": "Cell shape and volume fixed (ISIF = 2).",
+          "force_convergence_eV_per_angstrom": 0.02
+        },
+        "symmetry": {"use_symmetry": false, "ISYM": 0},
+        "dipole_correction": {"enabled": true, "direction": "z-axis", "IDIPOL": 3},
+        "slab_model": {"crystal_structure": "FCC", "surface_orientation": "(111)", "layers": 4, "vacuum_angstrom": 15.0}
+      },
+
+      "examples": [
+        "Generate VASP relaxation inputs for CO on a pure Cu(111) slab.",
+        "Generate frequency calculation inputs for CO on Cu(111) using the CONTCAR from a completed relaxation.",
+        "Generate solvation inputs for CHO on Cu-Au interface using a completed relaxation geometry.",
+        "Generate NEB inputs between CO on Cu(111) and CHO on Cu(111) using two completed relaxation CONTCARs.",
+        "Generate constant-potential inputs for CO on Cu(111) with TARGETMU = -0.7.",
+        "Generate inputs for OCCO on Cu-Au interface with site forced to pair_interface_cross.",
+        "Generate inputs for CHO on Cu-Ag interface using commensurate 1D matching."
+      ]
+    }
+  }
+}

@@ -1,0 +1,117 @@
+{
+  "isaac_record_version": "1.05",
+  "record_id": "01KPVM77VHVM0ZNB18WNAZRRYJ_intent_CuAg_CHO_relax",
+  "record_type": "intent",
+  "record_domain": "simulation",
+  "source_type": "computation",
+  "timestamps": {
+    "created_utc": "2026-04-22T22:15:55Z"
+  },
+  "sample": {
+    "material": {
+      "name": "Cu-Ag(111) interface slab with CHO adsorbate",
+      "formula": "CuAg",
+      "provenance": "theoretical"
+    },
+    "sample_form": "slab_model"
+  },
+  "system": {
+    "domain": "computational",
+    "technique": "DFT",
+    "instrument": {
+      "instrument_type": "simulation_engine",
+      "instrument_name": "VASP_Standard",
+      "vendor_or_project": "VASP"
+    },
+    "configuration": {
+      "code_version": "6.4.3",
+      "compute_architecture": "CPU"
+    }
+  },
+  "context": {
+    "environment": "in_silico",
+    "temperature_K": 0,
+    "electrochemistry": {
+      "reaction": "CORR"
+    }
+  },
+  "computation": {
+    "method": {
+      "family": "DFT",
+      "functional_class": "GGA",
+      "functional_name": "PBE",
+      "basis_type": "planewave",
+      "pseudopotential": "PAW",
+      "cutoff_eV": 400,
+      "spin_treatment": "collinear",
+      "dispersion": "D3",
+      "kpoints": "1x1x1 Monkhorst-Pack",
+      "smearing": {
+        "method": "Methfessel-Paxton",
+        "width_eV": 0.2
+      },
+      "convergence": {
+        "energy_eV": 1e-05,
+        "force_eV_per_A": 0.02
+      }
+    },
+    "slab_model": {
+      "surface_facet": "111",
+      "supercell": "interface: a=2x4 rows, b=Cu:9/Ag:8 commensurate",
+      "layers": 4,
+      "fixed_layers": 1,
+      "vacuum_A": 15.0,
+      "lattice_constant_A": {
+        "Cu": 3.615,
+        "Ag": 4.086
+      },
+      "dipole_correction": true
+    },
+    "potential_method": {
+      "type": "vacuum"
+    },
+    "output_quantity": {
+      "quantity": "E_DFT",
+      "corrections_applied": {
+        "zero_point_energy": false,
+        "entropy": false,
+        "thermal": false,
+        "solvation": false,
+        "dispersion": true,
+        "grand_canonical": false,
+        "PCET": false
+      }
+    }
+  },
+  "assets": [
+    {
+      "asset_id": "vasp_incar",
+      "content_role": "workflow_recipe",
+      "uri": "repo://CuAg_interface_CHO_full_workflow_commensurate_v62/01_relax/INCAR",
+      "media_type": "text/plain",
+      "sha256": "47fa55000fe3af9cd3ecfde09d20bc88efc54272eddb2ccf6d4308492dc77e58"
+    },
+    {
+      "asset_id": "vasp_poscar",
+      "content_role": "workflow_recipe",
+      "uri": "repo://CuAg_interface_CHO_full_workflow_commensurate_v62/01_relax/POSCAR",
+      "media_type": "text/plain",
+      "sha256": "2c202a7ee9ef3e7fe14ba2c837e68303935f47abb8700983f490f94a8080020f"
+    },
+    {
+      "asset_id": "vasp_kpoints",
+      "content_role": "workflow_recipe",
+      "uri": "repo://CuAg_interface_CHO_full_workflow_commensurate_v62/01_relax/KPOINTS",
+      "media_type": "text/plain",
+      "sha256": "a31dbe06d43be7c0c6a5781dd4c96d2eb57f4d66c2358357b34ef64fdb9cf74a"
+    },
+    {
+      "asset_id": "skill_metadata",
+      "content_role": "auxiliary_metadata",
+      "uri": "repo://CuAg_interface_CHO_full_workflow_commensurate_v62/01_relax/metadata.json",
+      "media_type": "application/json",
+      "sha256": "33ab04b282e8139514c118cc1bf0711dc80c7bfe08ca92346475529f3dc41bb6"
+    }
+  ],
+  "links": []
+}

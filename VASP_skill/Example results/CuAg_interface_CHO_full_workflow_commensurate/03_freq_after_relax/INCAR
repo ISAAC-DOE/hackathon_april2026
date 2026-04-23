@@ -1,0 +1,25 @@
+ISPIN = 2
+PREC = Accurate
+ENCUT = 400
+EDIFF = 1E-07
+NELM = 120
+ALGO = Normal
+GGA = PE
+IVDW = 11
+LASPH = .TRUE.
+IBRION = 5
+NSW = 1
+ISIF = 2
+ISMEAR = 1
+SIGMA = 0.2
+LREAL = Auto
+ISYM = 0
+ICHARG = 2
+LMAXMIX = 4
+LWAVE = .FALSE.
+LCHARG = .FALSE.
+LDIPOL = .TRUE.
+IDIPOL = 3
+NFREE = 2
+POTIM = 0.015
+# Only adsorbate atoms should be unfrozen; all slab atoms frozen.

@@ -1,0 +1,9 @@
+{
+  "skill_name": "vasp_input_generator",
+  "skill_version": "6.2",
+  "surface_name": "CuAg_interface",
+  "adsorbate": "CHO",
+  "calculation_mode": "solvation",
+  "status": "staged_waiting_for_parent_geometry",
+  "parent_contcar_expected": "../01_relax/CONTCAR"
+}
