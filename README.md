@@ -183,9 +183,9 @@ hackathon_april2026/
 | **Fetch record** | `GET /portal/api/records/<record_id>` |
 | **Validate (dry-run)** | `POST /portal/api/validate` |
 | **Submit record** | `POST /portal/api/records` |
-| **Wiki** | [ISAAC-DOE/isaac-ai-ready-record/wiki](https://github.com/ISAAC-DOE/isaac-ai-ready-record/wiki) |
-| **Schema repo** | [ISAAC-DOE/isaac-ai-ready-record](https://github.com/ISAAC-DOE/isaac-ai-ready-record) |
-| **Example records** | [examples/](https://github.com/ISAAC-DOE/isaac-ai-ready-record/tree/main/examples) |
+| **Wiki** | [ISAAC-DOE/isaac-ontology/wiki](https://github.com/ISAAC-DOE/isaac-ontology/wiki) |
+| **Schema** | `GET /portal/api/schema` · [ISAAC-DOE/isaac-ontology](https://github.com/ISAAC-DOE/isaac-ontology) |
+| **Example records** | `GET /portal/api/examples` |
 
 Authentication: Bearer token in `Authorization` header. Token in `.env` file.
 
